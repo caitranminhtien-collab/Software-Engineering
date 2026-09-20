@@ -1,0 +1,51 @@
+name: CD
+
+# Chạy sau khi CI trên main thành công.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Lưu ý: tên image trên GHCR phải viết thường. Nếu tên repo có chữ hoa, đặt tên image cố định.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.event.workflow_run.head_sha || github.sha }}
+            ghcr.io/${{ github.repository }}:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: chọn 1 cách triển khai và thay bước này:
+      #  - VPS: dùng SSH (secrets: SSH_HOST, SSH_USER, SSH_KEY) rồi `docker compose pull && docker compose up -d`
+      #  - PaaS: gọi webhook/CLI của nền tảng (token lưu ở GitHub Secrets)
+      # Cần chạy migration trước khi đổi phiên bản.
+      - name: Deploy
+        run: echo "TODO - điền bước triển khai thật"
+
+      - name: Health check
+        env:
+          HEALTH_URL: ${{ secrets.HEALTH_URL }}
+        run: curl --fail --retry 10 --retry-delay 5 --retry-connrefused "$HEALTH_URL"
+      # TODO: nếu health check thất bại, thêm bước rollback về image trước.
