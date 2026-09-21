@@ -1,0 +1,314 @@
+/* ==========================================================================
+   MAP & GEOFENCE STYLING
+   Custom Leaflet Dark/Imperial Layers, Geofence Circles, Markers, and Radars
+   ========================================================================== */
+
+#map-view {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: #0E1015;
+}
+
+#leaflet-map {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Tinh chỉnh bản đồ cho tông màu Cung đình đêm */
+.leaflet-tile {
+  filter: brightness(0.85) saturate(1.15) contrast(1.1);
+}
+
+/* Floating Status HUD Pill */
+.map-hud-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.map-hud-bar > * {
+  pointer-events: auto;
+}
+
+.gps-status-pill {
+  background: rgba(18, 20, 28, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-card);
+  font-size: 11.5px;
+}
+
+.gps-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.gps-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10B981;
+  box-shadow: 0 0 8px #10B981;
+  animation: pulseGlow 1.8s infinite;
+}
+
+.gps-dot.simulated {
+  background-color: #F59E0B;
+  box-shadow: 0 0 8px #F59E0B;
+}
+
+.nearest-poi-text {
+  color: var(--color-gold-300);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 190px;
+}
+
+/* Alert Banner khi bước vào Geofence POI */
+.geofence-alert-banner {
+  background: linear-gradient(135deg, rgba(139, 30, 30, 0.95), rgba(18, 20, 28, 0.95));
+  border: 1px solid var(--color-gold-400);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+  animation: fadeInDown 0.3s ease-out;
+  display: none;
+}
+
+.geofence-alert-banner.active {
+  display: flex;
+}
+
+.geofence-alert-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.geofence-alert-icon {
+  font-size: 20px;
+}
+
+.geofence-alert-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-gold-300);
+}
+
+.geofence-alert-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Floating Quick Actions on Map */
+.map-floating-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 80px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  background: rgba(20, 23, 33, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-gold);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+}
+
+.map-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--color-gold-400);
+  transform: translateY(-2px);
+}
+
+.map-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+/* Custom Marker Styles */
+.custom-poi-marker {
+  position: relative;
+  cursor: pointer;
+}
+
+.poi-marker-pin {
+  width: 36px;
+  height: 36px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: linear-gradient(135deg, var(--color-gold-400), var(--color-vermilion));
+  border: 2px solid #FFF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 0 10px rgba(212, 175, 55, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.custom-poi-marker:hover .poi-marker-pin {
+  transform: rotate(-45deg) scale(1.15);
+}
+
+.poi-marker-pin.free-marker {
+  background: linear-gradient(135deg, #10B981, #047857);
+}
+
+.poi-marker-content {
+  transform: rotate(45deg);
+  color: #FFF;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* User Location Marker with Radar Pulse */
+.user-location-marker {
+  position: relative;
+  width: 22px;
+  height: 22px;
+}
+
+.user-location-dot {
+  width: 14px;
+  height: 14px;
+  background: #3B82F6;
+  border: 2.5px solid #FFF;
+  border-radius: 50%;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.9);
+  z-index: 2;
+}
+
+.user-location-pulse {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.35);
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  animation: userRadarPulse 2s ease-out infinite;
+  z-index: 1;
+}
+
+@keyframes userRadarPulse {
+  0% { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Custom Popup Styles */
+.leaflet-popup-content-wrapper {
+  background: rgba(20, 23, 33, 0.96) !important;
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border-gold) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 0 !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-card) !important;
+  overflow: hidden;
+}
+
+.leaflet-popup-tip {
+  background: rgba(20, 23, 33, 0.96) !important;
+  border: 1px solid var(--border-gold) !important;
+}
+
+.poi-popup-card {
+  width: 240px;
+  padding: 12px;
+}
+
+.poi-popup-thumb {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+
+.poi-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.poi-popup-title {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-gold-400);
+}
+
+.poi-popup-hannom {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.poi-popup-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.poi-popup-btn {
+  width: 100%;
+  padding: 7px;
+  background: linear-gradient(135deg, var(--color-gold-500), var(--color-gold-600));
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #000;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.2s;
+}
+
+.poi-popup-btn:hover {
+  opacity: 0.9;
+}

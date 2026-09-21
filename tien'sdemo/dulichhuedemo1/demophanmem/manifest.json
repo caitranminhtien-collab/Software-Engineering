@@ -1,0 +1,22 @@
+{
+  "name": "Tuyến Di Sản Cung Điện & Lăng Tẩm Cố Đô Huế - GPS Audio Tour",
+  "short_name": "Hue Heritage Audio",
+  "description": "Thuyết minh âm thanh tự động định vị GPS tại 10 điểm di tích cung điện và lăng tẩm hoàng gia triều Nguyễn",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0C0D11",
+  "theme_color": "#8B1E1E",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./assets/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "./assets/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

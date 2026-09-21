@@ -1,0 +1,369 @@
+/* ==========================================================================
+   HUE IMPERIAL HERITAGE GPS AUDIO TOUR PWA
+   Style System: Royal Hue Aesthetics (Cung Đình Huế Đương Đại)
+   Colors: Imperial Gold, Vermilion Red, Deep Lacquer Black, Royal Jade
+   ========================================================================== */
+
+:root {
+  /* Color Palette */
+  --color-gold-50: #FFFBEB;
+  --color-gold-100: #FEF3C7;
+  --color-gold-300: #FCD34D;
+  --color-gold-400: #F59E0B;
+  --color-gold-500: #D4AF37; /* Hoàng Kim Triều Nguyễn */
+  --color-gold-600: #B45309;
+  
+  --color-vermilion: #8B1E1E; /* Đỏ Chu Sa Hoàng Thành */
+  --color-vermilion-light: #A82828;
+  --color-vermilion-dark: #621212;
+
+  --color-jade: #0F766E; /* Xanh Ngọc Bích Cung Đình */
+  --color-jade-light: #14B8A6;
+  
+  --bg-primary: #0C0D11; /* Đen Sơn Mài Hoàng Gia */
+  --bg-secondary: #14161E;
+  --bg-tertiary: #1C202C;
+  --bg-card: rgba(22, 25, 36, 0.78);
+  --bg-card-hover: rgba(30, 34, 48, 0.9);
+  
+  --text-primary: #F9FAFB;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
+  --text-gold: #FCD34D;
+
+  --border-gold: rgba(212, 175, 55, 0.35);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-active: rgba(212, 175, 55, 0.85);
+
+  --shadow-gold: 0 8px 32px rgba(212, 175, 55, 0.15);
+  --shadow-card: 0 10px 28px rgba(0, 0, 0, 0.45);
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+
+  --font-serif: 'Playfair Display', 'Cinzel', serif;
+  --font-sans: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --bottom-nav-height: 64px;
+  --top-header-height: 58px;
+  --mini-player-height: 68px;
+}
+
+/* Reset & Base Setup */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App Wrapper for Desktop/Mobile Viewports */
+.app-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at 50% 20%, #1A1C28 0%, #0C0D11 100%);
+}
+
+.app-shell {
+  width: 100%;
+  height: 100%;
+  max-width: 480px; /* Standard mobile ratio on desktop */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: var(--bg-primary);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(212, 175, 55, 0.2);
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .app-shell.desktop-expanded {
+    max-width: 100%;
+    box-shadow: none;
+  }
+}
+
+/* Top App Bar */
+.top-header {
+  height: var(--top-header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: rgba(12, 13, 17, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-gold);
+  z-index: 1000;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-gold-400), var(--color-vermilion));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.5);
+  border: 1px solid var(--color-gold-300);
+}
+
+.brand-logo svg {
+  width: 18px;
+  height: 18px;
+  fill: #FFF;
+}
+
+.brand-title {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title h1 {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-gold-400);
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.brand-title span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Language Pill Button */
+.lang-selector {
+  position: relative;
+}
+
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lang-btn:hover {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: var(--border-gold);
+}
+
+.lang-dropdown {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 6px;
+  min-width: 140px;
+  display: none;
+  z-index: 1100;
+}
+
+.lang-dropdown.show {
+  display: block;
+  animation: fadeInDown 0.2s ease-out;
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: background 0.15s;
+}
+
+.lang-option:hover, .lang-option.active {
+  background: rgba(212, 175, 55, 0.2);
+  color: var(--color-gold-300);
+}
+
+/* Unlock Status Chip */
+.unlock-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(139, 30, 30, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #F87171;
+}
+
+.unlock-badge.unlocked {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34D399;
+}
+
+/* Main Viewport Tabs Container */
+.main-viewport {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.view-tab {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.view-tab.active {
+  display: flex;
+  flex-direction: column;
+  opacity: 1;
+  z-index: 10;
+}
+
+/* Bottom Tab Navigation Bar */
+.bottom-nav {
+  height: var(--bottom-nav-height);
+  background: rgba(14, 16, 22, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border-gold);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 4px;
+  z-index: 1000;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 100%;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.nav-item svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  transition: transform 0.2s;
+}
+
+.nav-item span {
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.nav-item.active {
+  color: var(--color-gold-400);
+}
+
+.nav-item.active svg {
+  transform: scale(1.12);
+  stroke: var(--color-gold-400);
+}
+
+.nav-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  width: 20px;
+  height: 2px;
+  background: var(--color-gold-400);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--color-gold-400);
+}
+
+/* Floating Badges & Animations */
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.5);
+}
