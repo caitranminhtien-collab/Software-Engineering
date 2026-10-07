@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+import { checkDatabaseConnection } from "./config/database";
 
 dotenv.config();
 
@@ -12,6 +13,24 @@ app.get("/api/v1/health/live", (_req, res) => {
     status: "ok",
     message: "Hue Tourism Backend is running",
   });
+});
+
+app.get("/api/v1/health/ready", async (_req, res) => {
+  try {
+    await checkDatabaseConnection();
+
+    res.status(200).json({
+      status: "ready",
+      database: "connected",
+    });
+  } catch (error) {
+    console.error("Database readiness check failed:", error);
+
+    res.status(503).json({
+      status: "not_ready",
+      database: "unavailable",
+    });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
