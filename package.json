@@ -1,0 +1,33 @@
+{
+  "name": "software-engineering",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+  "dev": "tsx watch src/app.ts",
+  "build": "tsc",
+  "start": "node dist/app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/caitranminhtien-collab/Software-Engineering.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/caitranminhtien-collab/Software-Engineering/issues"
+  },
+  "homepage": "https://github.com/caitranminhtien-collab/Software-Engineering#readme",
+  "dependencies": {
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
