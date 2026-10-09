@@ -2,12 +2,14 @@ import express from "express";
 import dotenv from "dotenv";
 import { checkDatabaseConnection } from "./config/database";
 import attractionRoutes from "./routes/attraction.routes";
+import routeRoutes from "./routes/route.routes";
 dotenv.config();
 
 const app = express();
 
 app.use(express.json());
 app.use("/api/v1/attractions", attractionRoutes);
+app.use("/api/v1/routes", routeRoutes);
 app.get("/api/v1/health/live", (_req, res) => {
   res.status(200).json({
     status: "ok",
