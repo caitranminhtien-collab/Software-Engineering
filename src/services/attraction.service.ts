@@ -48,41 +48,47 @@ export async function getPublishedAttractions(
     countPublishedAttractions(),
   ]);
 
-  const data: AttractionListItem[] = rows.map((row) => {
-    const hasRequestedLanguage =
-      row.requested_name !== null;
+  const data: AttractionListItem[] = rows.map(
+    (row) => {
+      const hasRequestedLanguage =
+        row.requested_name !== null;
 
-    const name =
-      row.requested_name ??
-      row.vi_name;
+      const name =
+        row.requested_name ??
+        row.vi_name;
 
-    const contentLanguage =
-      hasRequestedLanguage
-        ? requestedLanguage
-        : row.vi_name !== null
-        ? "vi"
-        : null;
+      const contentLanguage =
+        hasRequestedLanguage
+          ? requestedLanguage
+          : row.vi_name !== null
+          ? "vi"
+          : null;
 
-    return {
-      id: Number(row.attraction_id),
-      slug: row.slug,
-      area_code: row.area_code,
+      return {
+        id: Number(row.attraction_id),
+        slug: row.slug,
+        area_code: row.area_code,
 
-      latitude: row.latitude,
-      longitude: row.longitude,
-      trigger_radius_m: row.trigger_radius_m,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        trigger_radius_m:
+          row.trigger_radius_m,
 
-      name,
+        name,
 
-      requested_language: requestedLanguage,
-      content_language: contentLanguage,
+        requested_language:
+          requestedLanguage,
 
-      fallback_used:
-        requestedLanguage !== "vi" &&
-        !hasRequestedLanguage &&
-        row.vi_name !== null,
-    };
-  });
+        content_language:
+          contentLanguage,
+
+        fallback_used:
+          requestedLanguage !== "vi" &&
+          !hasRequestedLanguage &&
+          row.vi_name !== null,
+      };
+    }
+  );
 
   return {
     data,
@@ -91,10 +97,12 @@ export async function getPublishedAttractions(
       page,
       page_size: pageSize,
       total,
-      total_pages: Math.ceil(total / pageSize),
+      total_pages:
+        Math.ceil(total / pageSize),
     },
   };
 }
+
 export interface AttractionMediaResult {
   id: number;
   type: "image" | "audio";
@@ -111,6 +119,7 @@ export interface AttractionMediaResult {
 
   fallback_used: boolean;
 }
+
 export interface AttractionDetailResult {
   id: number;
   slug: string;
@@ -128,12 +137,34 @@ export interface AttractionDetailResult {
   fallback_used: boolean;
 
   media: AttractionMediaResult[];
+
+  sources: unknown[];
 }
 
-export class AttractionNotFoundError extends Error {
+export class AttractionNotFoundError
+  extends Error {
   constructor() {
     super("Attraction not found");
-    this.name = "AttractionNotFoundError";
+    this.name =
+      "AttractionNotFoundError";
+  }
+}
+
+function parseSources(
+  value: string | null
+): unknown[] {
+  if (value === null) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+
+    return Array.isArray(parsed)
+      ? parsed
+      : [];
+  } catch {
+    return [];
   }
 }
 
@@ -141,27 +172,34 @@ export async function getPublishedAttractionById(
   attractionId: number,
   requestedLanguage: string
 ): Promise<AttractionDetailResult> {
-  const row = await findPublishedAttractionById(
-    attractionId,
-    requestedLanguage
-  );
+  const row =
+    await findPublishedAttractionById(
+      attractionId,
+      requestedLanguage
+    );
 
   if (!row) {
     throw new AttractionNotFoundError();
   }
 
   const hasRequestedLanguage =
-    row.requested_name !== null;
+    row.requested_name !== null &&
+    row.requested_description !== null;
 
   const name =
-    row.requested_name ??
-    row.vi_name;
+    hasRequestedLanguage
+      ? row.requested_name
+      : row.vi_name;
 
   const description =
-    row.requested_description ??
-    row.vi_description;
+    hasRequestedLanguage
+      ? row.requested_description
+      : row.vi_description;
 
-  if (name === null || description === null) {
+  if (
+    name === null ||
+    description === null
+  ) {
     throw new AttractionNotFoundError();
   }
 
@@ -169,79 +207,122 @@ export async function getPublishedAttractionById(
     hasRequestedLanguage
       ? requestedLanguage
       : "vi";
-    const mediaRows = await findPublishedAttractionMedia(
-  attractionId,
-  requestedLanguage
-);
 
-const imageRows = mediaRows.filter(
-  (media) => media.media_type === "image"
-);
+  const sourceReferences =
+    hasRequestedLanguage
+      ? row.requested_source_references
+      : row.vi_source_references;
 
-const requestedAudioRows = mediaRows.filter(
-  (media) =>
-    media.media_type === "audio" &&
-    media.language_code === requestedLanguage
-);
+  const sources =
+    parseSources(sourceReferences);
 
-const fallbackAudioRows =
-  requestedLanguage !== "vi" &&
-  requestedAudioRows.length === 0
-    ? mediaRows.filter(
-        (media) =>
-          media.media_type === "audio" &&
-          media.language_code === "vi"
-      )
-    : [];
+  const mediaRows =
+    await findPublishedAttractionMedia(
+      attractionId,
+      requestedLanguage
+    );
 
-const selectedMediaRows = [
-  ...imageRows,
-  ...(requestedAudioRows.length > 0
-    ? requestedAudioRows
-    : fallbackAudioRows),
-].sort(
-  (a, b) =>
-    a.display_order - b.display_order ||
-    Number(a.media_id) - Number(b.media_id)
-);
+  const imageRows =
+    mediaRows.filter(
+      (media) =>
+        media.media_type === "image"
+    );
 
-const media: AttractionMediaResult[] =
-  selectedMediaRows.map((item) => ({
-    id: Number(item.media_id),
-    type: item.media_type,
-    language: item.language_code,
+  const requestedAudioRows =
+    mediaRows.filter(
+      (media) =>
+        media.media_type === "audio" &&
+        media.language_code ===
+          requestedLanguage
+    );
 
-    url: item.file_url,
-    caption: item.caption,
+  const fallbackAudioRows =
+    requestedLanguage !== "vi" &&
+    requestedAudioRows.length === 0
+      ? mediaRows.filter(
+          (media) =>
+            media.media_type ===
+              "audio" &&
+            media.language_code === "vi"
+        )
+      : [];
 
-    credit: item.credit,
-    rights_reference: item.rights_reference,
+  const selectedMediaRows = [
+    ...imageRows,
 
-    duration_seconds: item.duration_seconds,
-    display_order: item.display_order,
+    ...(requestedAudioRows.length > 0
+      ? requestedAudioRows
+      : fallbackAudioRows),
+  ].sort(
+    (a, b) =>
+      a.display_order -
+        b.display_order ||
+      Number(a.media_id) -
+        Number(b.media_id)
+  );
 
-    fallback_used:
-      item.media_type === "audio" &&
-      item.language_code !== requestedLanguage,
-  }));
+  const media: AttractionMediaResult[] =
+    selectedMediaRows.map(
+      (item) => ({
+        id: Number(item.media_id),
+
+        type: item.media_type,
+
+        language:
+          item.language_code,
+
+        url: item.file_url,
+
+        caption:
+          item.caption,
+
+        credit:
+          item.credit,
+
+        rights_reference:
+          item.rights_reference,
+
+        duration_seconds:
+          item.duration_seconds,
+
+        display_order:
+          item.display_order,
+
+        fallback_used:
+          item.media_type ===
+            "audio" &&
+          item.language_code !==
+            requestedLanguage,
+      })
+    );
+
   return {
     id: Number(row.attraction_id),
+
     slug: row.slug,
     area_code: row.area_code,
 
     latitude: row.latitude,
     longitude: row.longitude,
-    trigger_radius_m: row.trigger_radius_m,
+
+    trigger_radius_m:
+      row.trigger_radius_m,
 
     name,
     description,
 
-    requested_language: requestedLanguage,
-    content_language: contentLanguage,
+    requested_language:
+      requestedLanguage,
+
+    content_language:
+      contentLanguage,
 
     fallback_used:
       requestedLanguage !== "vi" &&
       !hasRequestedLanguage,
+
     media,
+
+    sources,
   };
 }
