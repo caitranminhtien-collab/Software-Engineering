@@ -6,6 +6,8 @@ import routeRoutes from "./routes/route.routes";
 import sessionRoutes from "./routes/session.routes";
 import audioPlayRoutes from "./routes/audio-play.routes";
 import chatRoutes from "./routes/chat.routes";
+import locationSuggestionRoutes from "./routes/location-suggestion.routes";
+
 dotenv.config();
 
 const app = express();
@@ -16,6 +18,10 @@ app.use("/api/v1/attractions", attractionRoutes);
 app.use("/api/v1/routes", routeRoutes);
 app.use("/api/v1/visitor-sessions", sessionRoutes);
 app.use("/api/v1/chat", chatRoutes);
+app.use(
+  "/api/v1/location-suggestions",
+  locationSuggestionRoutes
+);
 app.get("/api/v1/health/live", (_req, res) => {
   res.status(200).json({
     status: "ok",
