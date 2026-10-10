@@ -1,7 +1,8 @@
 import {
   countPublishedAttractions,
-  findPublishedAttractions,
   findPublishedAttractionById,
+  findPublishedAttractionMedia,
+  findPublishedAttractions,
 } from "../repositories/attraction.repository";
 
 export interface AttractionListItem {
@@ -94,6 +95,22 @@ export async function getPublishedAttractions(
     },
   };
 }
+export interface AttractionMediaResult {
+  id: number;
+  type: "image" | "audio";
+  language: string | null;
+
+  url: string;
+  caption: string | null;
+
+  credit: string;
+  rights_reference: string;
+
+  duration_seconds: number | null;
+  display_order: number;
+
+  fallback_used: boolean;
+}
 export interface AttractionDetailResult {
   id: number;
   slug: string;
@@ -109,6 +126,8 @@ export interface AttractionDetailResult {
   requested_language: string;
   content_language: string;
   fallback_used: boolean;
+
+  media: AttractionMediaResult[];
 }
 
 export class AttractionNotFoundError extends Error {
@@ -150,7 +169,61 @@ export async function getPublishedAttractionById(
     hasRequestedLanguage
       ? requestedLanguage
       : "vi";
+    const mediaRows = await findPublishedAttractionMedia(
+  attractionId,
+  requestedLanguage
+);
 
+const imageRows = mediaRows.filter(
+  (media) => media.media_type === "image"
+);
+
+const requestedAudioRows = mediaRows.filter(
+  (media) =>
+    media.media_type === "audio" &&
+    media.language_code === requestedLanguage
+);
+
+const fallbackAudioRows =
+  requestedLanguage !== "vi" &&
+  requestedAudioRows.length === 0
+    ? mediaRows.filter(
+        (media) =>
+          media.media_type === "audio" &&
+          media.language_code === "vi"
+      )
+    : [];
+
+const selectedMediaRows = [
+  ...imageRows,
+  ...(requestedAudioRows.length > 0
+    ? requestedAudioRows
+    : fallbackAudioRows),
+].sort(
+  (a, b) =>
+    a.display_order - b.display_order ||
+    Number(a.media_id) - Number(b.media_id)
+);
+
+const media: AttractionMediaResult[] =
+  selectedMediaRows.map((item) => ({
+    id: Number(item.media_id),
+    type: item.media_type,
+    language: item.language_code,
+
+    url: item.file_url,
+    caption: item.caption,
+
+    credit: item.credit,
+    rights_reference: item.rights_reference,
+
+    duration_seconds: item.duration_seconds,
+    display_order: item.display_order,
+
+    fallback_used:
+      item.media_type === "audio" &&
+      item.language_code !== requestedLanguage,
+  }));
   return {
     id: Number(row.attraction_id),
     slug: row.slug,
@@ -169,5 +242,6 @@ export async function getPublishedAttractionById(
     fallback_used:
       requestedLanguage !== "vi" &&
       !hasRequestedLanguage,
+    media,
   };
 }

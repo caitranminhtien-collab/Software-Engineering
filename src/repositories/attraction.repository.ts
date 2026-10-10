@@ -1,6 +1,21 @@
 import type { QueryResultRow } from "pg";
 import { db } from "../config/database";
+export interface AttractionMediaRow extends QueryResultRow {
+  media_id: string;
+  attraction_id: string;
 
+  language_code: string | null;
+  media_type: "image" | "audio";
+
+  file_url: string;
+  caption: string | null;
+
+  credit: string;
+  rights_reference: string;
+
+  duration_seconds: number | null;
+  display_order: number;
+}
 export interface AttractionListRow extends QueryResultRow {
   attraction_id: string;
   slug: string;
@@ -126,4 +141,38 @@ export async function findPublishedAttractionById(
   );
 
   return result.rows[0] ?? null;
+}
+export async function findPublishedAttractionMedia(
+  attractionId: number,
+  requestedLanguage: string
+): Promise<AttractionMediaRow[]> {
+  const result = await db.query<AttractionMediaRow>(
+    `
+      SELECT
+        media_id,
+        attraction_id,
+        language_code,
+        media_type,
+        file_url,
+        caption,
+        credit,
+        rights_reference,
+        duration_seconds,
+        display_order
+      FROM attraction_media
+      WHERE attraction_id = $1
+        AND status = 'published'
+        AND (
+          media_type = 'image'
+          OR (
+            media_type = 'audio'
+            AND language_code IN ($2, 'vi')
+          )
+        )
+      ORDER BY display_order ASC, media_id ASC
+    `,
+    [attractionId, requestedLanguage]
+  );
+
+  return result.rows;
 }
