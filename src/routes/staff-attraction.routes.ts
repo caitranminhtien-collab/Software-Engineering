@@ -6,6 +6,10 @@ import {
 } from "../controllers/staff-attraction.controller";
 
 import {
+  createStaffMediaController,
+} from "../controllers/staff-media.controller";
+
+import {
   requireStaffSession,
 } from "../middleware/staff-auth.middleware";
 
@@ -22,6 +26,11 @@ import {
   validateStaffAttractionId,
   validateUpdateStaffAttraction,
 } from "../validators/staff-attraction.validator";
+
+import {
+  validateCreateStaffMedia,
+  validateStaffMediaParams,
+} from "../validators/staff-media.validator";
 
 import {
   upsertStaffLocalizationController,
@@ -70,6 +79,19 @@ router.put(
   validateStaffLocalizationParams,
   validateUpsertStaffLocalization,
   upsertStaffLocalizationController
+);
+
+router.post(
+  "/:id/media",
+  requireStaffSession,
+  requireStaffRole(
+    "editor",
+    "admin"
+  ),
+  requireCsrfToken,
+  validateStaffMediaParams,
+  validateCreateStaffMedia,
+  createStaffMediaController
 );
 
 export default router;

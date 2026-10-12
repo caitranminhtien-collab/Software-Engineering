@@ -11,6 +11,34 @@ export interface StaffWorkflowRow
   version: number | null;
 }
 
+export interface MediaPublishReadinessRow {
+  media_id: string;
+
+  media_type:
+    | "image"
+    | "audio";
+
+  language_code: string | null;
+
+  file_url: string;
+
+  credit: string;
+  rights_reference: string;
+
+  duration_seconds: number | null;
+}
+
+export interface RoutePublishReadinessRow
+  extends QueryResultRow {
+  route_id: string;
+
+  verified_at: Date | null;
+
+  stop_count: number;
+
+  unavailable_stop_count: number;
+}
+
 export async function findWorkflowResourceById(
   resource: StaffWorkflowResource,
   resourceId: number
@@ -262,45 +290,54 @@ export async function reviewVisitorWorkflowResource(
     }
 
     case "routes": {
-      if (decision === "approve") {
-        const result =
-          await db.query<StaffWorkflowRow>(
-            `
-              SELECT
-                route_id AS resource_id,
-                status,
-                content_version AS version
-              FROM routes
-              WHERE route_id = $1
-                AND status = 'in_review'
-              LIMIT 1
-            `,
-            [resourceId]
-          );
+  if (decision === "approve") {
+    const result =
+      await db.query<StaffWorkflowRow>(
+        `
+          UPDATE routes
 
-        return result.rows[0] ?? null;
-      }
+          SET
+            verified_at =
+              CURRENT_TIMESTAMP
 
-      const result =
-        await db.query<StaffWorkflowRow>(
-          `
-            UPDATE routes
-            SET
-              status = 'draft',
-              approved_by = NULL,
-              published_at = NULL
-            WHERE route_id = $1
-              AND status = 'in_review'
-            RETURNING
-              route_id AS resource_id,
-              status,
-              content_version AS version
-          `,
-          [resourceId]
-        );
+          WHERE route_id = $1
+            AND status = 'in_review'
 
-      return result.rows[0] ?? null;
-    }
+          RETURNING
+            route_id AS resource_id,
+            status,
+            content_version AS version
+        `,
+        [resourceId]
+      );
+
+    return result.rows[0] ?? null;
+  }
+
+  const result =
+    await db.query<StaffWorkflowRow>(
+      `
+        UPDATE routes
+
+        SET
+          status = 'draft',
+          verified_at = NULL,
+          approved_by = NULL,
+          published_at = NULL
+
+        WHERE route_id = $1
+          AND status = 'in_review'
+
+        RETURNING
+          route_id AS resource_id,
+          status,
+          content_version AS version
+      `,
+      [resourceId]
+    );
+
+  return result.rows[0] ?? null;
+}
 
     case "localizations": {
       if (decision === "approve") {
@@ -428,28 +465,61 @@ export async function publishVisitorWorkflowResource(
     }
 
     case "routes": {
-      const result =
-        await db.query<StaffPublishRow>(
-          `
-            UPDATE routes
-            SET
-              status = 'published',
-              approved_by = $2,
-              published_at = CURRENT_TIMESTAMP
-            WHERE route_id = $1
-              AND status = 'in_review'
-            RETURNING
-              route_id AS resource_id,
-              status,
-              content_version AS version,
-              approved_by,
-              published_at
-          `,
-          [resourceId, approvedBy]
-        );
+  const result =
+    await db.query<StaffPublishRow>(
+      `
+        UPDATE routes
 
-      return result.rows[0] ?? null;
-    }
+        SET
+          status = 'published',
+          approved_by = $2,
+          published_at =
+            CURRENT_TIMESTAMP
+
+        WHERE route_id = $1
+          AND status = 'in_review'
+          AND verified_at IS NOT NULL
+
+          AND EXISTS (
+            SELECT 1
+
+            FROM route_stops AS rs
+
+            WHERE rs.route_id = $1
+          )
+
+          AND NOT EXISTS (
+            SELECT 1
+
+            FROM route_stops AS rs
+
+            LEFT JOIN attractions AS a
+              ON a.attraction_id =
+                rs.attraction_id
+
+            WHERE rs.route_id = $1
+              AND (
+                a.attraction_id IS NULL
+                OR
+                a.status <> 'published'
+              )
+          )
+
+        RETURNING
+          route_id AS resource_id,
+          status,
+          content_version AS version,
+          approved_by,
+          published_at
+      `,
+      [
+        resourceId,
+        approvedBy,
+      ]
+    );
+
+  return result.rows[0] ?? null;
+}
 
     case "localizations": {
       const result =
@@ -563,6 +633,83 @@ export async function findPublishedVietnameseLocalization(
         LIMIT 1
       `,
       [attractionId]
+    );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findMediaPublishReadiness(
+  mediaId: number
+): Promise<MediaPublishReadinessRow | null> {
+  const result =
+    await db.query<MediaPublishReadinessRow>(
+      `
+        SELECT
+          media_id,
+          media_type,
+          language_code,
+          file_url,
+          credit,
+          rights_reference,
+          duration_seconds
+
+        FROM attraction_media
+
+        WHERE media_id = $1
+
+        LIMIT 1
+      `,
+      [mediaId]
+    );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findRoutePublishReadiness(
+  routeId: number
+): Promise<RoutePublishReadinessRow | null> {
+  const result =
+    await db.query<RoutePublishReadinessRow>(
+      `
+        SELECT
+          r.route_id,
+          r.verified_at,
+
+          COUNT(
+            rs.route_stop_id
+          )::integer
+            AS stop_count,
+
+          COUNT(
+            rs.route_stop_id
+          ) FILTER (
+            WHERE
+              rs.route_stop_id IS NOT NULL
+              AND (
+                a.attraction_id IS NULL
+                OR
+                a.status <> 'published'
+              )
+          )::integer
+            AS unavailable_stop_count
+
+        FROM routes AS r
+
+        LEFT JOIN route_stops AS rs
+          ON rs.route_id =
+            r.route_id
+
+        LEFT JOIN attractions AS a
+          ON a.attraction_id =
+            rs.attraction_id
+
+        WHERE r.route_id = $1
+
+        GROUP BY
+          r.route_id,
+          r.verified_at
+      `,
+      [routeId]
     );
 
   return result.rows[0] ?? null;

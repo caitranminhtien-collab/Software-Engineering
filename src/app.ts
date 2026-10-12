@@ -24,6 +24,7 @@ import locationSuggestionRoutes from "./routes/location-suggestion.routes";
 import staffAuthRoutes from "./routes/staff-auth.routes";
 import staffAttractionRoutes from "./routes/staff-attraction.routes";
 import staffWorkflowRoutes from "./routes/staff-workflow.routes";
+import staffRouteRoutes from "./routes/staff-route.routes";
 
 const app = express();
 
@@ -70,6 +71,11 @@ app.use(
 app.use(
   "/api/v1/staff",
   staffWorkflowRoutes
+);
+
+app.use(
+  "/api/v1/staff/routes",
+  staffRouteRoutes
 );
 
 app.get(

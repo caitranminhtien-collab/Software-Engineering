@@ -5,6 +5,8 @@ import {
   publishVisitorWorkflowResource,
   reviewVisitorWorkflowResource,
   submitWorkflowResource,
+  findMediaPublishReadiness,
+  findRoutePublishReadiness,
 } from "../repositories/staff-workflow.repository";
 
 import type {
@@ -50,6 +52,7 @@ export class StaffWorkflowNotFoundError
   extends Error {
   constructor() {
     super("Workflow resource not found");
+
     this.name =
       "StaffWorkflowNotFoundError";
   }
@@ -95,6 +98,7 @@ export class StaffPublishReadinessError
   extends Error {
   constructor(message: string) {
     super(message);
+
     this.name =
       "StaffPublishReadinessError";
   }
@@ -144,9 +148,12 @@ export async function submitStaffWorkflow(
     id: Number(
       submitted.resource_id
     ),
+
     resource,
+
     status:
       submitted.status,
+
     version:
       submitted.version === null
         ? null
@@ -175,9 +182,36 @@ export async function reviewStaffWorkflow(
     throw new StaffWorkflowReviewConflictError();
   }
 
-  if (resource === "knowledge-documents") {
+  if (
+    resource ===
+    "knowledge-documents"
+  ) {
     throw new StaffKnowledgeReviewPrerequisiteError();
   }
+
+  if (
+  resource === "routes" &&
+  decision === "approve"
+) {
+  const route =
+    await findRoutePublishReadiness(
+      resourceId
+    );
+
+  if (!route) {
+    throw new StaffWorkflowNotFoundError();
+  }
+
+  if (route.stop_count <= 0) {
+    throw new StaffWorkflowReviewConflictError();
+  }
+
+  if (
+    route.unavailable_stop_count > 0
+  ) {
+    throw new StaffWorkflowReviewConflictError();
+  }
+}
 
   const reviewed =
     await reviewVisitorWorkflowResource(
@@ -194,9 +228,12 @@ export async function reviewStaffWorkflow(
     id: Number(
       reviewed.resource_id
     ),
+
     resource,
+
     status:
       reviewed.status,
+
     version:
       reviewed.version === null
         ? null
@@ -211,7 +248,10 @@ export async function publishStaffWorkflow(
   resourceId: number,
   approvedBy: number
 ): Promise<StaffPublishResult> {
-  if (resource === "knowledge-documents") {
+  if (
+    resource ===
+    "knowledge-documents"
+  ) {
     throw new StaffPublishResourceError();
   }
 
@@ -229,7 +269,10 @@ export async function publishStaffWorkflow(
     throw new StaffWorkflowReviewConflictError();
   }
 
-  if (resource === "localizations") {
+  if (
+    resource ===
+    "localizations"
+  ) {
     const localization =
       await findLocalizationPublishReadiness(
         resourceId
@@ -259,7 +302,10 @@ export async function publishStaffWorkflow(
     }
   }
 
-  if (resource === "attractions") {
+  if (
+    resource ===
+    "attractions"
+  ) {
     const vietnameseLocalization =
       await findPublishedVietnameseLocalization(
         resourceId
@@ -268,6 +314,119 @@ export async function publishStaffWorkflow(
     if (!vietnameseLocalization) {
       throw new StaffPublishReadinessError(
         "Attraction requires a published Vietnamese localization before publication"
+      );
+    }
+  }
+
+  if (
+  resource === "routes"
+) {
+  const route =
+    await findRoutePublishReadiness(
+      resourceId
+    );
+
+  if (!route) {
+    throw new StaffWorkflowNotFoundError();
+  }
+
+  if (!route.verified_at) {
+    throw new StaffPublishReadinessError(
+      "Route must be reviewed and verified before publication"
+    );
+  }
+
+  if (route.stop_count <= 0) {
+    throw new StaffPublishReadinessError(
+      "Route requires at least one stop before publication"
+    );
+  }
+
+  if (
+    route.unavailable_stop_count > 0
+  ) {
+    throw new StaffPublishReadinessError(
+      "All route stops must reference published attractions before publication"
+    );
+  }
+}
+
+  if (
+    resource ===
+    "media"
+  ) {
+    const media =
+      await findMediaPublishReadiness(
+        resourceId
+      );
+
+    if (!media) {
+      throw new StaffWorkflowNotFoundError();
+    }
+
+    if (
+      !media.file_url ||
+      !media.file_url.startsWith(
+        "https://"
+      )
+    ) {
+      throw new StaffPublishReadinessError(
+        "Media requires a valid HTTPS file_url"
+      );
+    }
+
+    if (
+      !media.credit ||
+      !media.credit.trim()
+    ) {
+      throw new StaffPublishReadinessError(
+        "Media requires credit before publishing"
+      );
+    }
+
+    if (
+      !media.rights_reference ||
+      !media.rights_reference.trim()
+    ) {
+      throw new StaffPublishReadinessError(
+        "Media requires rights_reference before publishing"
+      );
+    }
+
+    if (
+      media.media_type ===
+      "audio"
+    ) {
+      if (
+        !media.language_code ||
+        !media.language_code.trim()
+      ) {
+        throw new StaffPublishReadinessError(
+          "Audio media requires language_code before publishing"
+        );
+      }
+
+      if (
+        media.duration_seconds ===
+          null ||
+        Number(
+          media.duration_seconds
+        ) <= 0
+      ) {
+        throw new StaffPublishReadinessError(
+          "Audio media requires positive duration_seconds before publishing"
+        );
+      }
+    }
+
+    if (
+      media.media_type ===
+        "image" &&
+      media.duration_seconds !==
+        null
+    ) {
+      throw new StaffPublishReadinessError(
+        "Image media must not have duration_seconds"
       );
     }
   }
@@ -291,17 +450,22 @@ export async function publishStaffWorkflow(
     id: Number(
       published.resource_id
     ),
+
     resource,
+
     status: "published",
+
     version:
       published.version === null
         ? null
         : Number(
             published.version
           ),
+
     approved_by: Number(
       published.approved_by
     ),
+
     published_at:
       published.published_at,
   };
