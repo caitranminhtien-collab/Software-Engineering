@@ -20,6 +20,39 @@ import type {
   StaffWorkflowResource,
 } from "../validators/staff-workflow.validator";
 
+function isAllowedMediaFileUrl(
+  fileUrl: string
+): boolean {
+  try {
+    const url =
+      new URL(fileUrl);
+
+    if (
+      url.protocol === "https:"
+    ) {
+      return true;
+    }
+
+    if (
+      process.env.NODE_ENV ===
+        "development" &&
+      url.protocol === "http:" &&
+      (
+        url.hostname ===
+          "localhost" ||
+        url.hostname ===
+          "127.0.0.1"
+      )
+    ) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 function hasSourceReferences(
   value: string
 ): boolean {
@@ -446,15 +479,18 @@ export async function publishStaffWorkflow(
     }
 
     if (
-      !media.file_url ||
-      !media.file_url.startsWith(
-        "https://"
-      )
-    ) {
-      throw new StaffPublishReadinessError(
-        "Media requires a valid HTTPS file_url"
-      );
-    }
+  !media.file_url ||
+  !isAllowedMediaFileUrl(
+    media.file_url
+  )
+) {
+  throw new StaffPublishReadinessError(
+    process.env.NODE_ENV ===
+      "development"
+      ? "Media requires HTTPS or a localhost development file_url"
+      : "Media requires a valid HTTPS file_url"
+  );
+}
 
     if (
       !media.credit ||

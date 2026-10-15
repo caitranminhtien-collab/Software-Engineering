@@ -6,6 +6,14 @@ import {
   findStaffAttractionById,
 } from "../repositories/staff-attraction.repository";
 
+import {
+  localMediaStorage,
+} from "../adapters/media/local-media-storage.adapter";
+
+import type {
+  ValidatedMediaFile,
+} from "../adapters/media/media-file.validator";
+
 export interface CreateStaffMediaInput {
   languageCode: string | null;
 
@@ -13,7 +21,8 @@ export interface CreateStaffMediaInput {
     | "image"
     | "audio";
 
-  fileUrl: string;
+  fileUrl: string | null;
+
   caption: string | null;
 
   credit: string;
@@ -21,6 +30,11 @@ export interface CreateStaffMediaInput {
 
   durationSeconds: number | null;
   displayOrder: number;
+}
+
+export interface UploadedStaffMediaInput {
+  file: Express.Multer.File;
+  validatedFile: ValidatedMediaFile;
 }
 
 export interface StaffMediaResult {
@@ -58,9 +72,24 @@ export class StaffMediaAttractionNotFoundError
   }
 }
 
+export class StaffMediaStorageInputError
+  extends Error {
+  constructor() {
+    super(
+      "Media requires either an uploaded file or file_url"
+    );
+
+    this.name =
+      "StaffMediaStorageInputError";
+  }
+}
+
 export async function createStaffMedia(
   attractionId: number,
-  input: CreateStaffMediaInput
+  input: CreateStaffMediaInput,
+  uploaded:
+    | UploadedStaffMediaInput
+    | null = null
 ): Promise<StaffMediaResult> {
   const attraction =
     await findStaffAttractionById(
@@ -71,62 +100,107 @@ export async function createStaffMedia(
     throw new StaffMediaAttractionNotFoundError();
   }
 
-  const media =
-    await createDraftMedia(
-      attractionId,
-      input.languageCode,
-      input.mediaType,
-      input.fileUrl,
-      input.caption,
-      input.credit,
-      input.rightsReference,
-      input.durationSeconds,
-      input.displayOrder
-    );
+  let storedFile:
+    | Awaited<
+        ReturnType<
+          typeof localMediaStorage.save
+        >
+      >
+    | null = null;
 
-  return {
-    id: Number(
-      media.media_id
-    ),
+  let fileUrl =
+    input.fileUrl;
 
-    attraction_id: Number(
-      media.attraction_id
-    ),
+  if (uploaded) {
+    storedFile =
+      await localMediaStorage.save({
+        attractionId,
+        mediaType:
+          input.mediaType,
+        buffer:
+          uploaded.file.buffer,
+        validatedFile:
+          uploaded.validatedFile,
+      });
 
-    language_code:
-      media.language_code,
+    fileUrl =
+      storedFile.publicUrl;
+  }
 
-    media_type:
-      media.media_type,
+  if (!fileUrl) {
+    throw new StaffMediaStorageInputError();
+  }
 
-    file_url:
-      media.file_url,
+  try {
+    const media =
+      await createDraftMedia(
+        attractionId,
+        input.languageCode,
+        input.mediaType,
+        fileUrl,
+        input.caption,
+        input.credit,
+        input.rightsReference,
+        input.durationSeconds,
+        input.displayOrder
+      );
 
-    caption:
-      media.caption,
+    return {
+      id: Number(
+        media.media_id
+      ),
 
-    credit:
-      media.credit,
+      attraction_id: Number(
+        media.attraction_id
+      ),
 
-    rights_reference:
-      media.rights_reference,
+      language_code:
+        media.language_code,
 
-    duration_seconds:
-      media.duration_seconds,
+      media_type:
+        media.media_type,
 
-    display_order:
-      media.display_order,
+      file_url:
+        media.file_url,
 
-    status: "draft",
+      caption:
+        media.caption,
 
-    approved_by:
-      media.approved_by === null
-        ? null
-        : Number(
-            media.approved_by
-          ),
+      credit:
+        media.credit,
 
-    published_at:
-      media.published_at,
-  };
+      rights_reference:
+        media.rights_reference,
+
+      duration_seconds:
+        media.duration_seconds,
+
+      display_order:
+        media.display_order,
+
+      status: "draft",
+
+      approved_by:
+        media.approved_by === null
+          ? null
+          : Number(
+              media.approved_by
+            ),
+
+      published_at:
+        media.published_at,
+    };
+  } catch (error) {
+    /*
+     * Avoid orphan files when the database
+     * insert fails after local storage succeeds.
+     */
+    if (storedFile) {
+      await localMediaStorage.remove(
+        storedFile.absolutePath
+      );
+    }
+
+    throw error;
+  }
 }

@@ -1,6 +1,9 @@
 import "dotenv/config";
 
 import express from "express";
+import {
+  resolve,
+} from "node:path";
 
 import {
   checkDatabaseConnection,
@@ -32,6 +35,22 @@ import staffAccountRoutes from "./routes/staff-account.routes";
 const app = express();
 
 app.use(express.json());
+
+/*
+ * Development/local media storage.
+ * Production should normally serve media
+ * through object storage / CDN instead.
+ */
+app.use(
+  "/uploads/media",
+  express.static(
+    resolve(
+      process.cwd(),
+      "uploads",
+      "media"
+    )
+  )
+);
 
 /*
  * Health endpoints không cần staff session.

@@ -6,6 +6,7 @@ import type {
 import {
   createStaffMedia,
   StaffMediaAttractionNotFoundError,
+  StaffMediaStorageInputError,
 } from "../services/staff-media.service";
 
 import type {
@@ -13,8 +14,12 @@ import type {
   CreateStaffMediaParams,
 } from "../validators/staff-media.validator";
 
+import type {
+  ValidatedMediaFile,
+} from "../adapters/media/media-file.validator";
+
 export async function createStaffMediaController(
-  _req: Request,
+  req: Request,
   res: Response
 ): Promise<void> {
   try {
@@ -27,10 +32,28 @@ export async function createStaffMediaController(
       res.locals
         .createStaffMediaBody as CreateStaffMediaBody;
 
+    const validatedMediaFile =
+      res.locals
+        .validatedMediaFile as
+        | ValidatedMediaFile
+        | null;
+
+    const uploaded =
+      req.file &&
+      validatedMediaFile
+        ? {
+            file:
+              req.file,
+            validatedFile:
+              validatedMediaFile,
+          }
+        : null;
+
     const media =
       await createStaffMedia(
         attractionId,
-        body
+        body,
+        uploaded
       );
 
     res.status(201).json({
@@ -43,9 +66,28 @@ export async function createStaffMediaController(
     ) {
       res.status(404).json({
         error: {
-          code: "NOT_FOUND",
+          code:
+            "NOT_FOUND",
+
           message:
             "Attraction not found",
+        },
+      });
+
+      return;
+    }
+
+    if (
+      error instanceof
+      StaffMediaStorageInputError
+    ) {
+      res.status(400).json({
+        error: {
+          code:
+            "VALIDATION_ERROR",
+
+          message:
+            error.message,
         },
       });
 
@@ -61,6 +103,7 @@ export async function createStaffMediaController(
       error: {
         code:
           "INTERNAL_SERVER_ERROR",
+
         message:
           "Unable to create media",
       },

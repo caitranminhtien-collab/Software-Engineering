@@ -18,6 +18,10 @@ import {
 } from "../middleware/staff-csrf.middleware";
 
 import {
+  parseStaffMediaUpload,
+} from "../middleware/staff-media-upload.middleware";
+
+import {
   requireStaffRole,
 } from "../middleware/staff-role.middleware";
 
@@ -90,6 +94,7 @@ router.post(
   ),
   requireCsrfToken,
   validateStaffMediaParams,
+  parseStaffMediaUpload,
   validateCreateStaffMedia,
   createStaffMediaController
 );
