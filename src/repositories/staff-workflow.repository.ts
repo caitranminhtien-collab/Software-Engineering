@@ -39,6 +39,19 @@ export interface RoutePublishReadinessRow
   unavailable_stop_count: number;
 }
 
+export interface KnowledgeReviewReadinessRow
+  extends QueryResultRow {
+  document_id: string;
+  version: number;
+  status: string;
+
+  chunk_count: number;
+  invalid_chunk_count: number;
+
+  min_chunk_order: number | null;
+  max_chunk_order: number | null;
+}
+
 export async function findWorkflowResourceById(
   resource: StaffWorkflowResource,
   resourceId: number
@@ -710,6 +723,257 @@ export async function findRoutePublishReadiness(
           r.verified_at
       `,
       [routeId]
+    );
+
+  return result.rows[0] ?? null;
+}
+
+export async function findKnowledgeReviewReadiness(
+  documentId: number
+): Promise<KnowledgeReviewReadinessRow | null> {
+  const result =
+    await db.query<KnowledgeReviewReadinessRow>(
+      `
+        SELECT
+          d.document_id,
+          d.version,
+          d.status,
+
+          COUNT(
+            c.chunk_id
+          )::integer
+            AS chunk_count,
+
+          COUNT(
+            c.chunk_id
+          ) FILTER (
+            WHERE
+              c.embedding_model IS NULL
+              OR
+              c.embedding IS NULL
+              OR
+              c.indexed_at IS NULL
+          )::integer
+            AS invalid_chunk_count,
+
+          MIN(
+            c.chunk_order
+          )::integer
+            AS min_chunk_order,
+
+          MAX(
+            c.chunk_order
+          )::integer
+            AS max_chunk_order
+
+        FROM knowledge_documents AS d
+
+        LEFT JOIN knowledge_chunks AS c
+          ON c.document_id =
+            d.document_id
+          AND c.document_version =
+            d.version
+
+        WHERE d.document_id = $1
+
+        GROUP BY
+          d.document_id,
+          d.version,
+          d.status
+      `,
+      [documentId]
+    );
+
+  return result.rows[0] ?? null;
+}
+
+export async function approveKnowledgeDocument(
+  documentId: number,
+  expectedVersion: number,
+  approvedBy: number
+): Promise<StaffWorkflowRow | null> {
+  const client =
+    await db.connect();
+
+  try {
+    await client.query(
+      "BEGIN"
+    );
+
+    const documentResult =
+      await client.query<{
+        document_id: string;
+        version: number;
+        status: string;
+      }>(
+        `
+          SELECT
+            document_id,
+            version,
+            status
+
+          FROM knowledge_documents
+
+          WHERE document_id = $1
+
+          FOR UPDATE
+        `,
+        [documentId]
+      );
+
+    const document =
+      documentResult.rows[0];
+
+    if (
+      !document ||
+      document.status !==
+        "in_review" ||
+      Number(document.version) !==
+        expectedVersion
+    ) {
+      await client.query(
+        "ROLLBACK"
+      );
+
+      return null;
+    }
+
+    const chunkResult =
+      await client.query<{
+        chunk_count: number;
+        invalid_chunk_count: number;
+        min_chunk_order:
+          number | null;
+        max_chunk_order:
+          number | null;
+      }>(
+        `
+          SELECT
+            COUNT(*)::integer
+              AS chunk_count,
+
+            COUNT(*) FILTER (
+              WHERE
+                embedding_model IS NULL
+                OR
+                embedding IS NULL
+                OR
+                indexed_at IS NULL
+            )::integer
+              AS invalid_chunk_count,
+
+            MIN(
+              chunk_order
+            )::integer
+              AS min_chunk_order,
+
+            MAX(
+              chunk_order
+            )::integer
+              AS max_chunk_order
+
+          FROM knowledge_chunks
+
+          WHERE document_id = $1
+            AND document_version = $2
+        `,
+        [
+          documentId,
+          expectedVersion,
+        ]
+      );
+
+    const chunks =
+      chunkResult.rows[0];
+
+    if (
+      !chunks ||
+      chunks.chunk_count <= 0 ||
+      chunks.invalid_chunk_count > 0 ||
+      chunks.min_chunk_order !== 1 ||
+      chunks.max_chunk_order !==
+        chunks.chunk_count
+    ) {
+      await client.query(
+        "ROLLBACK"
+      );
+
+      return null;
+    }
+
+    const approved =
+      await client.query<StaffWorkflowRow>(
+        `
+          UPDATE knowledge_documents
+
+          SET
+            status = 'approved',
+            approved_by = $3,
+            approved_at =
+              CURRENT_TIMESTAMP
+
+          WHERE document_id = $1
+            AND version = $2
+            AND status = 'in_review'
+
+          RETURNING
+            document_id AS resource_id,
+            status,
+            version
+        `,
+        [
+          documentId,
+          expectedVersion,
+          approvedBy,
+        ]
+      );
+
+    if (!approved.rows[0]) {
+      await client.query(
+        "ROLLBACK"
+      );
+
+      return null;
+    }
+
+    await client.query(
+      "COMMIT"
+    );
+
+    return approved.rows[0];
+  } catch (error) {
+    await client.query(
+      "ROLLBACK"
+    );
+
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function rejectKnowledgeDocument(
+  documentId: number
+): Promise<StaffWorkflowRow | null> {
+  const result =
+    await db.query<StaffWorkflowRow>(
+      `
+        UPDATE knowledge_documents
+
+        SET
+          status = 'draft',
+          approved_by = NULL,
+          approved_at = NULL
+
+        WHERE document_id = $1
+          AND status = 'in_review'
+
+        RETURNING
+          document_id AS resource_id,
+          status,
+          version
+      `,
+      [documentId]
     );
 
   return result.rows[0] ?? null;

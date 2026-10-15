@@ -15,13 +15,19 @@ import {
   validateStaffLogin,
 } from "../validators/staff-auth.validator";
 
-import { 
-    requireCsrfToken,
+import {
+  requireCsrfToken,
 } from "../middleware/staff-csrf.middleware";
+
+import {
+  staffLoginRateLimiter,
+} from "../middleware/staff-login-rate-limit.middleware";
+
 const router = Router();
 
 router.post(
   "/login",
+  staffLoginRateLimiter,
   validateStaffLogin,
   staffLoginController
 );
@@ -44,4 +50,5 @@ router.post(
   requireCsrfToken,
   staffLogoutController
 );
+
 export default router;

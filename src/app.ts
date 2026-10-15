@@ -7,6 +7,7 @@ import {
 } from "./config/database";
 
 import {
+  checkRedisConnection,
   connectRedis,
 } from "./config/redis";
 
@@ -14,25 +15,101 @@ import {
   staffSessionMiddleware,
 } from "./config/session";
 
-
 import attractionRoutes from "./routes/attraction.routes";
 import routeRoutes from "./routes/route.routes";
 import sessionRoutes from "./routes/session.routes";
 import audioPlayRoutes from "./routes/audio-play.routes";
 import chatRoutes from "./routes/chat.routes";
 import locationSuggestionRoutes from "./routes/location-suggestion.routes";
+
 import staffAuthRoutes from "./routes/staff-auth.routes";
 import staffAttractionRoutes from "./routes/staff-attraction.routes";
 import staffWorkflowRoutes from "./routes/staff-workflow.routes";
 import staffRouteRoutes from "./routes/staff-route.routes";
+import staffKnowledgeRoutes from "./routes/staff-knowledge.routes";
+import staffAccountRoutes from "./routes/staff-account.routes";
 
 const app = express();
 
 app.use(express.json());
 
-// Staff server-side session
+/*
+ * Health endpoints không cần staff session.
+ */
+app.get(
+  "/api/v1/health/live",
+  (_req, res) => {
+    res.status(200).json({
+      status: "ok",
+      message:
+        "Hue Tourism Backend is running",
+    });
+  }
+);
+
+app.get(
+  "/api/v1/health/ready",
+  async (_req, res) => {
+    let databaseReady = false;
+    let redisReady = false;
+
+    try {
+      await checkDatabaseConnection();
+      databaseReady = true;
+    } catch (error) {
+      console.error(
+        "Database readiness check failed:",
+        error
+      );
+    }
+
+    try {
+      await checkRedisConnection();
+      redisReady = true;
+    } catch (error) {
+      console.error(
+        "Redis readiness check failed:",
+        error
+      );
+    }
+
+    if (
+      databaseReady &&
+      redisReady
+    ) {
+      res.status(200).json({
+        status: "ready",
+        database: "connected",
+        redis: "connected",
+      });
+
+      return;
+    }
+
+    res.status(503).json({
+      status: "not_ready",
+
+      database:
+        databaseReady
+          ? "connected"
+          : "unavailable",
+
+      redis:
+        redisReady
+          ? "connected"
+          : "unavailable",
+    });
+  }
+);
+
+/*
+ * Staff server-side session.
+ */
 app.use(staffSessionMiddleware);
 
+/*
+ * Public / visitor routes.
+ */
 app.use(
   "/api/v1/audio-plays",
   audioPlayRoutes
@@ -63,14 +140,23 @@ app.use(
   locationSuggestionRoutes
 );
 
+/*
+ * Staff authentication.
+ */
+app.use(
+  "/api/v1/staff/auth",
+  staffAuthRoutes
+);
+
+/*
+ * Staff resource routes.
+ *
+ * Các route cụ thể đặt trước
+ * generic workflow route.
+ */
 app.use(
   "/api/v1/staff/attractions",
   staffAttractionRoutes
-);
-
-app.use(
-  "/api/v1/staff",
-  staffWorkflowRoutes
 );
 
 app.use(
@@ -78,44 +164,26 @@ app.use(
   staffRouteRoutes
 );
 
-app.get(
-  "/api/v1/health/live",
-  (_req, res) => {
-    res.status(200).json({
-      status: "ok",
-      message:
-        "Hue Tourism Backend is running",
-    });
-  }
-);
-
-app.get(
-  "/api/v1/health/ready",
-  async (_req, res) => {
-    try {
-      await checkDatabaseConnection();
-
-      res.status(200).json({
-        status: "ready",
-        database: "connected",
-      });
-    } catch (error) {
-      console.error(
-        "Database readiness check failed:",
-        error
-      );
-
-      res.status(503).json({
-        status: "not_ready",
-        database: "unavailable",
-      });
-    }
-  }
+app.use(
+  "/api/v1/staff/knowledge-documents",
+  staffKnowledgeRoutes
 );
 
 app.use(
-  "/api/v1/staff/auth",
-  staffAuthRoutes
+  "/api/v1/staff/accounts",
+  staffAccountRoutes
+);
+
+/*
+ * Generic workflow:
+ *
+ * /staff/:resource/:id/submit
+ * /staff/:resource/:id/review
+ * /staff/:resource/:id/publish
+ */
+app.use(
+  "/api/v1/staff",
+  staffWorkflowRoutes
 );
 
 const PORT =
@@ -125,11 +193,14 @@ async function startServer(): Promise<void> {
   try {
     await connectRedis();
 
-    app.listen(PORT, () => {
-      console.log(
-        `Server is running on port ${PORT}`
-      );
-    });
+    app.listen(
+      PORT,
+      () => {
+        console.log(
+          `Server is running on port ${PORT}`
+        );
+      }
+    );
   } catch (error) {
     console.error(
       "Application startup failed:",

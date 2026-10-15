@@ -7,6 +7,9 @@ import {
   submitWorkflowResource,
   findMediaPublishReadiness,
   findRoutePublishReadiness,
+  findKnowledgeReviewReadiness,
+  approveKnowledgeDocument,
+  rejectKnowledgeDocument,
 } from "../repositories/staff-workflow.repository";
 
 import type {
@@ -166,7 +169,8 @@ export async function submitStaffWorkflow(
 export async function reviewStaffWorkflow(
   resource: StaffWorkflowResource,
   resourceId: number,
-  decision: StaffReviewDecision
+  decision: StaffReviewDecision,
+  reviewedBy: number
 ): Promise<StaffWorkflowResult> {
   const current =
     await findWorkflowResourceById(
@@ -183,11 +187,88 @@ export async function reviewStaffWorkflow(
   }
 
   if (
-    resource ===
-    "knowledge-documents"
+  resource ===
+  "knowledge-documents"
+) {
+  if (decision === "reject") {
+    const rejected =
+      await rejectKnowledgeDocument(
+        resourceId
+      );
+
+    if (!rejected) {
+      throw new StaffWorkflowReviewConflictError();
+    }
+
+    return {
+      id: Number(
+        rejected.resource_id
+      ),
+
+      resource,
+
+      status:
+        rejected.status,
+
+      version:
+        rejected.version === null
+          ? null
+          : Number(
+              rejected.version
+            ),
+    };
+  }
+
+  const readiness =
+    await findKnowledgeReviewReadiness(
+      resourceId
+    );
+
+  if (!readiness) {
+    throw new StaffWorkflowNotFoundError();
+  }
+
+  if (
+    readiness.chunk_count <= 0 ||
+    readiness.invalid_chunk_count > 0 ||
+    readiness.min_chunk_order !== 1 ||
+    readiness.max_chunk_order !==
+      readiness.chunk_count
   ) {
     throw new StaffKnowledgeReviewPrerequisiteError();
   }
+
+  const approved =
+    await approveKnowledgeDocument(
+      resourceId,
+      Number(
+        readiness.version
+      ),
+      reviewedBy
+    );
+
+  if (!approved) {
+    throw new StaffWorkflowReviewConflictError();
+  }
+
+  return {
+    id: Number(
+      approved.resource_id
+    ),
+
+    resource,
+
+    status:
+      approved.status,
+
+    version:
+      approved.version === null
+        ? null
+        : Number(
+            approved.version
+          ),
+  };
+}
 
   if (
   resource === "routes" &&

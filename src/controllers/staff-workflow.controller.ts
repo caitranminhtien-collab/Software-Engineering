@@ -88,7 +88,7 @@ export async function submitStaffWorkflowController(
 }
 
 export async function reviewStaffWorkflowController(
-  _req: Request,
+  req: Request,
   res: Response
 ): Promise<void> {
   try {
@@ -103,11 +103,27 @@ export async function reviewStaffWorkflowController(
     } = res.locals
       .staffReviewBody as StaffReviewBody;
 
+    const staffId =
+      req.session.staffId;
+
+    if (!staffId) {
+      res.status(401).json({
+        error: {
+          code: "UNAUTHORIZED",
+          message:
+            "Staff authentication required",
+        },
+      });
+
+      return;
+    }
+
     const result =
       await reviewStaffWorkflow(
         resource,
         resourceId,
-        decision
+        decision,
+        Number(staffId)
       );
 
     res.status(200).json({
@@ -153,7 +169,7 @@ export async function reviewStaffWorkflowController(
           code:
             "KNOWLEDGE_REVIEW_PREREQUISITE",
           message:
-            "Knowledge document review requires the indexing workflow",
+            "Knowledge document review requires successful indexing of the current version",
         },
       });
 
@@ -177,7 +193,7 @@ export async function reviewStaffWorkflowController(
 }
 
 export async function publishStaffWorkflowController(
-  _req: Request,
+  req: Request,
   res: Response
 ): Promise<void> {
   try {
@@ -187,15 +203,26 @@ export async function publishStaffWorkflowController(
     } = res.locals
       .staffWorkflowParams as StaffWorkflowParams;
 
-    const staff = res.locals.staff as {
-      id: number;
-    };
+    const staffId =
+      req.session.staffId;
+
+    if (!staffId) {
+      res.status(401).json({
+        error: {
+          code: "UNAUTHORIZED",
+          message:
+            "Staff authentication required",
+        },
+      });
+
+      return;
+    }
 
     const result =
       await publishStaffWorkflow(
         resource,
         resourceId,
-        staff.id
+        Number(staffId)
       );
 
     res.status(200).json({
@@ -225,7 +252,8 @@ export async function publishStaffWorkflowController(
         error: {
           code:
             "PUBLISH_READINESS_ERROR",
-          message: error.message,
+          message:
+            error.message,
         },
       });
 
@@ -254,7 +282,8 @@ export async function publishStaffWorkflowController(
     ) {
       res.status(409).json({
         error: {
-          code: "WORKFLOW_CONFLICT",
+          code:
+            "WORKFLOW_CONFLICT",
           message:
             "Resource cannot be published in its current status",
         },
