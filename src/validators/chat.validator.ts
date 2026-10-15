@@ -5,7 +5,9 @@ import type {
 } from "express";
 
 export interface CreateChatMessageBody {
-  content: string;
+  question: string;
+  languageCode: "vi" | "en";
+  attractionId: number | null;
 }
 
 export function validateCreateChatMessage(
@@ -15,42 +17,91 @@ export function validateCreateChatMessage(
 ): void {
   const errors: string[] = [];
 
-  const rawContent = req.body.content;
+  const rawQuestion =
+    req.body.question;
 
-  if (typeof rawContent !== "string") {
-    errors.push(
-      "content must be a string"
-    );
-  }
+  const rawLanguage =
+    req.body.language;
 
-  const content =
-    typeof rawContent === "string"
-      ? rawContent.trim()
+  const rawAttractionId =
+    req.body.attraction_id;
+
+  const question =
+    typeof rawQuestion === "string"
+      ? rawQuestion.trim()
       : "";
 
+  const languageCode =
+    typeof rawLanguage === "string"
+      ? rawLanguage
+          .trim()
+          .toLowerCase()
+      : "";
+
+  let attractionId:
+    | number
+    | null = null;
+
   if (
-    typeof rawContent === "string" &&
-    content.length === 0
+    typeof rawQuestion !== "string"
   ) {
     errors.push(
-      "content must not be empty"
+      "question must be a string"
+    );
+  } else if (
+    question.length === 0
+  ) {
+    errors.push(
+      "question must not be empty"
+    );
+  } else if (
+    question.length > 2000
+  ) {
+    errors.push(
+      "question must not exceed 2000 characters"
     );
   }
 
   if (
-    typeof rawContent === "string" &&
-    content.length > 2000
+    languageCode !== "vi" &&
+    languageCode !== "en"
   ) {
     errors.push(
-      "content must not exceed 2000 characters"
+      "language must be either vi or en"
     );
+  }
+
+  if (
+    rawAttractionId !==
+      undefined &&
+    rawAttractionId !== null
+  ) {
+    const parsedAttractionId =
+      Number(
+        rawAttractionId
+      );
+
+    if (
+      !Number.isInteger(
+        parsedAttractionId
+      ) ||
+      parsedAttractionId <= 0
+    ) {
+      errors.push(
+        "attraction_id must be a positive integer"
+      );
+    } else {
+      attractionId =
+        parsedAttractionId;
+    }
   }
 
   if (errors.length > 0) {
     res.status(400).json({
       error: {
         code: "VALIDATION_ERROR",
-        message: "Invalid request body",
+        message:
+          "Invalid request body",
         details: errors,
       },
     });
@@ -59,7 +110,12 @@ export function validateCreateChatMessage(
   }
 
   res.locals.createChatMessageBody = {
-    content,
+    question,
+    languageCode:
+      languageCode as
+        | "vi"
+        | "en",
+    attractionId,
   } satisfies CreateChatMessageBody;
 
   next();

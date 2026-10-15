@@ -489,16 +489,23 @@ export async function publishVisitorWorkflowResource(
           published_at =
             CURRENT_TIMESTAMP
 
-        WHERE route_id = $1
-          AND status = 'in_review'
-          AND verified_at IS NOT NULL
+        WHERE
+          route_id = $1
+
+          AND
+            status =
+            'in_review'
+
+          AND
+            verified_at IS NOT NULL
 
           AND EXISTS (
             SELECT 1
 
             FROM route_stops AS rs
 
-            WHERE rs.route_id = $1
+            WHERE
+              rs.route_id = $1
           )
 
           AND NOT EXISTS (
@@ -507,14 +514,37 @@ export async function publishVisitorWorkflowResource(
             FROM route_stops AS rs
 
             LEFT JOIN attractions AS a
-              ON a.attraction_id =
+              ON
+                a.attraction_id =
                 rs.attraction_id
 
-            WHERE rs.route_id = $1
+            LEFT JOIN attraction_localizations
+              AS vi_loc
+              ON
+                vi_loc.attraction_id =
+                rs.attraction_id
+
+              AND
+                vi_loc.language_code =
+                'vi'
+
+              AND
+                vi_loc.status =
+                'published'
+
+            WHERE
+              rs.route_id = $1
+
               AND (
                 a.attraction_id IS NULL
+
                 OR
-                a.status <> 'published'
+                  a.status IS DISTINCT FROM
+                  'published'
+
+                OR
+                  vi_loc.localization_id
+                  IS NULL
               )
           )
 
@@ -700,8 +730,14 @@ export async function findRoutePublishReadiness(
               rs.route_stop_id IS NOT NULL
               AND (
                 a.attraction_id IS NULL
+
                 OR
-                a.status <> 'published'
+                  a.status IS DISTINCT FROM
+                  'published'
+
+                OR
+                  vi_loc.localization_id
+                  IS NULL
               )
           )::integer
             AS unavailable_stop_count
@@ -709,20 +745,39 @@ export async function findRoutePublishReadiness(
         FROM routes AS r
 
         LEFT JOIN route_stops AS rs
-          ON rs.route_id =
+          ON
+            rs.route_id =
             r.route_id
 
         LEFT JOIN attractions AS a
-          ON a.attraction_id =
+          ON
+            a.attraction_id =
             rs.attraction_id
 
-        WHERE r.route_id = $1
+        LEFT JOIN attraction_localizations
+          AS vi_loc
+          ON
+            vi_loc.attraction_id =
+            rs.attraction_id
+
+          AND
+            vi_loc.language_code =
+            'vi'
+
+          AND
+            vi_loc.status =
+            'published'
+
+        WHERE
+          r.route_id = $1
 
         GROUP BY
           r.route_id,
           r.verified_at
       `,
-      [routeId]
+      [
+        routeId,
+      ]
     );
 
   return result.rows[0] ?? null;

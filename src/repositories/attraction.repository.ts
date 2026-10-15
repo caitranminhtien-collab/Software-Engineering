@@ -1,5 +1,10 @@
-import type { QueryResultRow } from "pg";
-import { db } from "../config/database";
+import type {
+  QueryResultRow,
+} from "pg";
+
+import {
+  db,
+} from "../config/database";
 
 export interface AttractionMediaRow
   extends QueryResultRow {
@@ -7,7 +12,9 @@ export interface AttractionMediaRow
   attraction_id: string;
 
   language_code: string | null;
-  media_type: "image" | "audio";
+  media_type:
+    | "image"
+    | "audio";
 
   file_url: string;
   caption: string | null;
@@ -15,7 +22,10 @@ export interface AttractionMediaRow
   credit: string;
   rights_reference: string;
 
-  duration_seconds: number | null;
+  duration_seconds:
+    | number
+    | null;
+
   display_order: number;
 }
 
@@ -28,8 +38,11 @@ export interface AttractionListRow
   longitude: number;
   trigger_radius_m: number;
 
-  requested_name: string | null;
-  vi_name: string | null;
+  requested_name:
+    | string
+    | null;
+
+  vi_name: string;
 }
 
 export interface AttractionDetailRow
@@ -42,13 +55,21 @@ export interface AttractionDetailRow
   longitude: number;
   trigger_radius_m: number;
 
-  requested_name: string | null;
-  requested_description: string | null;
-  requested_source_references: string | null;
+  requested_name:
+    | string
+    | null;
 
-  vi_name: string | null;
-  vi_description: string | null;
-  vi_source_references: string | null;
+  requested_description:
+    | string
+    | null;
+
+  requested_source_references:
+    | string
+    | null;
+
+  vi_name: string;
+  vi_description: string;
+  vi_source_references: string;
 }
 
 interface CountRow
@@ -80,25 +101,50 @@ export async function findPublishedAttractions(
 
         FROM attractions AS a
 
-        LEFT JOIN attraction_localizations
+        /*
+         * Requested language là optional.
+         * Nếu không có thì service fallback sang vi.
+         */
+        LEFT JOIN
+          attraction_localizations
           AS requested_loc
-          ON requested_loc.attraction_id =
+          ON
+            requested_loc.attraction_id =
             a.attraction_id
-          AND requested_loc.language_code = $1
-          AND requested_loc.status =
+
+          AND
+            requested_loc.language_code =
+            $1
+
+          AND
+            requested_loc.status =
             'published'
 
-        LEFT JOIN attraction_localizations
+        /*
+         * Published Vietnamese localization
+         * là bắt buộc cho public attraction.
+         */
+        JOIN
+          attraction_localizations
           AS vi_loc
-          ON vi_loc.attraction_id =
+          ON
+            vi_loc.attraction_id =
             a.attraction_id
-          AND vi_loc.language_code = 'vi'
-          AND vi_loc.status =
+
+          AND
+            vi_loc.language_code =
+            'vi'
+
+          AND
+            vi_loc.status =
             'published'
 
-        WHERE a.status = 'published'
+        WHERE
+          a.status =
+          'published'
 
-        ORDER BY a.attraction_id ASC
+        ORDER BY
+          a.attraction_id ASC
 
         LIMIT $2
         OFFSET $3
@@ -114,19 +160,45 @@ export async function findPublishedAttractions(
 }
 
 export async function countPublishedAttractions():
-  Promise<number> {
+Promise<number> {
   const result =
     await db.query<CountRow>(
       `
         SELECT
-          COUNT(*)::text AS total
-        FROM attractions
-        WHERE status = 'published'
+          COUNT(*)::text
+            AS total
+
+        FROM attractions AS a
+
+        WHERE
+          a.status =
+          'published'
+
+          AND EXISTS (
+            SELECT 1
+
+            FROM
+              attraction_localizations
+              AS loc
+
+            WHERE
+              loc.attraction_id =
+              a.attraction_id
+
+              AND
+                loc.language_code =
+                'vi'
+
+              AND
+                loc.status =
+                'published'
+          )
       `
     );
 
   return Number(
-    result.rows[0]?.total ?? 0
+    result.rows[0]?.total ??
+    0
   );
 }
 
@@ -165,24 +237,43 @@ export async function findPublishedAttractionById(
 
         FROM attractions AS a
 
-        LEFT JOIN attraction_localizations
+        LEFT JOIN
+          attraction_localizations
           AS requested_loc
-          ON requested_loc.attraction_id =
+          ON
+            requested_loc.attraction_id =
             a.attraction_id
-          AND requested_loc.language_code = $2
-          AND requested_loc.status =
+
+          AND
+            requested_loc.language_code =
+            $2
+
+          AND
+            requested_loc.status =
             'published'
 
-        LEFT JOIN attraction_localizations
+        JOIN
+          attraction_localizations
           AS vi_loc
-          ON vi_loc.attraction_id =
+          ON
+            vi_loc.attraction_id =
             a.attraction_id
-          AND vi_loc.language_code = 'vi'
-          AND vi_loc.status =
+
+          AND
+            vi_loc.language_code =
+            'vi'
+
+          AND
+            vi_loc.status =
             'published'
 
-        WHERE a.attraction_id = $1
-          AND a.status = 'published'
+        WHERE
+          a.attraction_id =
+          $1
+
+          AND
+            a.status =
+            'published'
 
         LIMIT 1
       `,
@@ -192,7 +283,10 @@ export async function findPublishedAttractionById(
       ]
     );
 
-  return result.rows[0] ?? null;
+  return (
+    result.rows[0] ??
+    null
+  );
 }
 
 export async function findPublishedAttractionMedia(
@@ -216,14 +310,28 @@ export async function findPublishedAttractionMedia(
 
         FROM attraction_media
 
-        WHERE attraction_id = $1
-          AND status = 'published'
+        WHERE
+          attraction_id =
+          $1
+
+          AND
+            status =
+            'published'
+
           AND (
-            media_type = 'image'
+            media_type =
+              'image'
+
             OR (
-              media_type = 'audio'
-              AND language_code
-                IN ($2, 'vi')
+              media_type =
+                'audio'
+
+              AND
+                language_code
+                IN (
+                  $2,
+                  'vi'
+                )
             )
           )
 

@@ -21,8 +21,13 @@ interface VisitorSessionLocal {
     | "route"
     | "attraction";
 
-  accessRouteId: number | null;
-  accessAttractionId: number | null;
+  accessRouteId:
+    | number
+    | null;
+
+  accessAttractionId:
+    | number
+    | null;
 }
 
 // POST /api/v1/chat/messages
@@ -33,20 +38,26 @@ export async function createChatMessageController(
   try {
     const {
       sessionId,
-      languageCode,
-    } = res.locals
-      .visitorSession as VisitorSessionLocal;
+    } =
+      res.locals
+        .visitorSession as
+        VisitorSessionLocal;
 
     const {
-      content,
-    } = res.locals
-      .createChatMessageBody as CreateChatMessageBody;
+      question,
+      languageCode,
+      attractionId,
+    } =
+      res.locals
+        .createChatMessageBody as
+        CreateChatMessageBody;
 
     const result =
       await createChatExchange(
         sessionId,
-        content,
-        languageCode
+        question,
+        languageCode,
+        attractionId
       );
 
     res.status(201).json({
@@ -60,7 +71,8 @@ export async function createChatMessageController(
 
     res.status(500).json({
       error: {
-        code: "INTERNAL_SERVER_ERROR",
+        code:
+          "INTERNAL_SERVER_ERROR",
         message:
           "Unable to process chat message",
       },
@@ -76,8 +88,10 @@ export async function getChatHistoryController(
   try {
     const {
       sessionId,
-    } = res.locals
-      .visitorSession as VisitorSessionLocal;
+    } =
+      res.locals
+        .visitorSession as
+        VisitorSessionLocal;
 
     const messages =
       await getChatHistory(
@@ -95,7 +109,8 @@ export async function getChatHistoryController(
 
     res.status(500).json({
       error: {
-        code: "INTERNAL_SERVER_ERROR",
+        code:
+          "INTERNAL_SERVER_ERROR",
         message:
           "Unable to load chat history",
       },

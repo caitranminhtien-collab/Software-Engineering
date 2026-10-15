@@ -7,16 +7,22 @@ import {
 
 import {
   searchKnowledge,
+  type KnowledgeCitation,
 } from "./knowledge.service";
 
 export interface ChatMessageResult {
   id: number;
   session_id: number;
 
-  speaker: "visitor" | "assistant";
+  speaker:
+    | "visitor"
+    | "assistant";
+
   content: string;
 
-  citations: unknown | null;
+  citations:
+    | unknown
+    | null;
 
   response_status:
     | "answered"
@@ -28,28 +34,59 @@ export interface ChatMessageResult {
 }
 
 export interface ChatExchangeResult {
-  visitor_message: ChatMessageResult;
-  assistant_message: ChatMessageResult;
+  visitor_message:
+    ChatMessageResult;
 
+  assistant_message:
+    ChatMessageResult;
+
+  answer: string;
+
+  citations:
+    | KnowledgeCitation[]
+    | null;
+
+  response_status:
+    | "answered"
+    | "insufficient";
+
+  requested_language: string;
   content_language: string;
   fallback_used: boolean;
+
+  attraction_id:
+    | number
+    | null;
 }
 
 function mapChatMessage(
   message: ChatMessageRow
 ): ChatMessageResult {
   return {
-    id: Number(message.message_id),
-    session_id: Number(message.session_id),
+    id:
+      Number(
+        message.message_id
+      ),
 
-    speaker: message.speaker,
-    content: message.content,
+    session_id:
+      Number(
+        message.session_id
+      ),
 
-    citations: message.citations,
+    speaker:
+      message.speaker,
+
+    content:
+      message.content,
+
+    citations:
+      message.citations,
+
     response_status:
       message.response_status,
 
-    created_at: message.created_at,
+    created_at:
+      message.created_at,
   };
 }
 
@@ -63,30 +100,41 @@ export async function saveVisitorMessage(
       content
     );
 
-  return mapChatMessage(message);
+  return mapChatMessage(
+    message
+  );
 }
 
 export async function createChatExchange(
   sessionId: number,
-  content: string,
-  languageCode: string
+  question: string,
+  languageCode: string,
+  attractionId:
+    | number
+    | null
 ): Promise<ChatExchangeResult> {
-  // 1. Lưu câu hỏi visitor
+  /*
+   * sessionId luôn được lấy từ
+   * visitor session đã xác thực,
+   * không nhận từ request body.
+   */
   const visitorMessage =
     await createVisitorMessage(
       sessionId,
-      content
+      question
     );
 
-  // 2. Tìm knowledge phù hợp
   const knowledge =
     await searchKnowledge(
-      content,
-      languageCode
+      question,
+      languageCode,
+      attractionId
     );
 
-  // 3. Không tìm thấy thông tin phù hợp
-  if (knowledge.matches.length === 0) {
+  if (
+    knowledge.matches.length ===
+    0
+  ) {
     const insufficientText =
       languageCode === "en"
         ? "I do not have enough approved information to answer this question."
@@ -102,40 +150,59 @@ export async function createChatExchange(
 
     return {
       visitor_message:
-        mapChatMessage(visitorMessage),
+        mapChatMessage(
+          visitorMessage
+        ),
 
       assistant_message:
         mapChatMessage(
           assistantMessage
         ),
 
+      answer:
+        insufficientText,
+
+      citations:
+        null,
+
+      response_status:
+        "insufficient",
+
+      requested_language:
+        languageCode,
+
       content_language:
         knowledge.content_language,
 
       fallback_used:
         knowledge.fallback_used,
+
+      attraction_id:
+        attractionId,
     };
   }
 
-  // 4. Ghép các chunk phù hợp thành câu trả lời
   const uniqueContents = [
     ...new Set(
       knowledge.matches.map(
-        (match) => match.content
+        (match) =>
+          match.content
       )
     ),
   ];
 
   const answer =
-    uniqueContents.join(" ");
-
-  // 5. Tạo citations từ các knowledge chunk
-  const citations =
-    knowledge.matches.map(
-      (match) => match.citation
+    uniqueContents.join(
+      " "
     );
 
-  // 6. Lưu assistant message
+  const citations:
+    KnowledgeCitation[] =
+    knowledge.matches.map(
+      (match) =>
+        match.citation
+    );
+
   const assistantMessage =
     await createAssistantMessage(
       sessionId,
@@ -146,28 +213,47 @@ export async function createChatExchange(
 
   return {
     visitor_message:
-      mapChatMessage(visitorMessage),
+      mapChatMessage(
+        visitorMessage
+      ),
 
     assistant_message:
       mapChatMessage(
         assistantMessage
       ),
 
+    answer,
+
+    citations,
+
+    response_status:
+      "answered",
+
+    requested_language:
+      languageCode,
+
     content_language:
       knowledge.content_language,
 
     fallback_used:
       knowledge.fallback_used,
+
+    attraction_id:
+      attractionId,
   };
 }
 
 export async function getChatHistory(
   sessionId: number
-): Promise<ChatMessageResult[]> {
+): Promise<
+  ChatMessageResult[]
+> {
   const rows =
     await findChatMessagesBySession(
       sessionId
     );
 
-  return rows.map(mapChatMessage);
+  return rows.map(
+    mapChatMessage
+  );
 }

@@ -427,7 +427,7 @@ export async function publishStaffWorkflow(
     route.unavailable_stop_count > 0
   ) {
     throw new StaffPublishReadinessError(
-      "All route stops must reference published attractions before publication"
+      "All route stops must reference published attractions with published Vietnamese localizations before publication"
     );
   }
 }
