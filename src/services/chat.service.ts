@@ -6,6 +6,7 @@ import {
 } from "../repositories/chat.repository";
 
 import {
+  KnowledgeEmbeddingUnavailableError,
   searchKnowledge,
   type KnowledgeCitation,
 } from "./knowledge.service";
@@ -57,6 +58,18 @@ export interface ChatExchangeResult {
   attraction_id:
     | number
     | null;
+}
+
+export class ChatDependencyUnavailableError
+  extends Error {
+  constructor() {
+    super(
+      "Knowledge service is temporarily unavailable"
+    );
+
+    this.name =
+      "ChatDependencyUnavailableError";
+  }
 }
 
 function mapChatMessage(
@@ -114,9 +127,8 @@ export async function createChatExchange(
     | null
 ): Promise<ChatExchangeResult> {
   /*
-   * sessionId luôn được lấy từ
-   * visitor session đã xác thực,
-   * không nhận từ request body.
+   * sessionId luôn được lấy từ visitor
+   * session đã xác thực, không nhận từ body.
    */
   const visitorMessage =
     await createVisitorMessage(
@@ -124,12 +136,42 @@ export async function createChatExchange(
       question
     );
 
-  const knowledge =
-    await searchKnowledge(
-      question,
-      languageCode,
-      attractionId
-    );
+  let knowledge;
+
+  try {
+    knowledge =
+      await searchKnowledge(
+        question,
+        languageCode,
+        attractionId
+      );
+  } catch (error) {
+    if (
+      error instanceof
+      KnowledgeEmbeddingUnavailableError
+    ) {
+      /*
+       * Ghi lại một assistant error message
+       * để chat history không bị cụt ở visitor
+       * message khi AI dependency gặp sự cố.
+       */
+      const errorText =
+        languageCode === "en"
+          ? "The knowledge service is temporarily unavailable. Please try again later."
+          : "Dịch vụ tra cứu kiến thức đang tạm thời không khả dụng. Vui lòng thử lại sau.";
+
+      await createAssistantMessage(
+        sessionId,
+        errorText,
+        null,
+        "error"
+      );
+
+      throw new ChatDependencyUnavailableError();
+    }
+
+    throw error;
+  }
 
   if (
     knowledge.matches.length ===

@@ -4,6 +4,7 @@ import type {
 } from "express";
 
 import {
+  ChatDependencyUnavailableError,
   createChatExchange,
   getChatHistory,
 } from "../services/chat.service";
@@ -64,6 +65,23 @@ export async function createChatMessageController(
       data: result,
     });
   } catch (error) {
+    if (
+      error instanceof
+      ChatDependencyUnavailableError
+    ) {
+      res.status(503).json({
+        error: {
+          code:
+            "AI_SERVICE_UNAVAILABLE",
+
+          message:
+            "Knowledge service is temporarily unavailable",
+        },
+      });
+
+      return;
+    }
+
     console.error(
       "Create chat exchange failed:",
       error
@@ -73,6 +91,7 @@ export async function createChatMessageController(
       error: {
         code:
           "INTERNAL_SERVER_ERROR",
+
         message:
           "Unable to process chat message",
       },
@@ -111,6 +130,7 @@ export async function getChatHistoryController(
       error: {
         code:
           "INTERNAL_SERVER_ERROR",
+
         message:
           "Unable to load chat history",
       },

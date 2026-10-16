@@ -8,6 +8,14 @@ import {
   findStaffAttractionById,
 } from "../repositories/staff-attraction.repository";
 
+import {
+  getEmbeddingProvider,
+} from "../adapters/embedding/embedding-provider.factory";
+
+import {
+  EmbeddingProviderError,
+} from "../adapters/embedding/embedding-provider";
+
 export interface CreateStaffKnowledgeInput {
   attractionId: number | null;
   title: string;
@@ -19,33 +27,17 @@ export interface CreateStaffKnowledgeInput {
 
 export interface StaffKnowledgeResult {
   id: number;
-
-  attraction_id:
-    | number
-    | null;
-
+  attraction_id: number | null;
   title: string;
   language_code: string;
-
-  source_url:
-    | string
-    | null;
-
+  source_url: string | null;
   source_credit: string;
   body_text: string;
-
   version: number;
   status: string;
-
   created_by: number;
-
-  approved_by:
-    | number
-    | null;
-
-  approved_at:
-    | Date
-    | null;
+  approved_by: number | null;
+  approved_at: Date | null;
 }
 
 export interface StaffKnowledgeReindexResult {
@@ -58,10 +50,7 @@ export interface StaffKnowledgeReindexResult {
 export class StaffKnowledgeAttractionNotFoundError
   extends Error {
   constructor() {
-    super(
-      "Attraction not found"
-    );
-
+    super("Attraction not found");
     this.name =
       "StaffKnowledgeAttractionNotFoundError";
   }
@@ -70,10 +59,7 @@ export class StaffKnowledgeAttractionNotFoundError
 export class StaffKnowledgeDocumentNotFoundError
   extends Error {
   constructor() {
-    super(
-      "Knowledge document not found"
-    );
-
+    super("Knowledge document not found");
     this.name =
       "StaffKnowledgeDocumentNotFoundError";
   }
@@ -88,6 +74,18 @@ export class StaffKnowledgeReindexConflictError
 
     this.name =
       "StaffKnowledgeReindexConflictError";
+  }
+}
+
+export class StaffKnowledgeEmbeddingUnavailableError
+  extends Error {
+  constructor() {
+    super(
+      "Embedding service is temporarily unavailable"
+    );
+
+    this.name =
+      "StaffKnowledgeEmbeddingUnavailableError";
   }
 }
 
@@ -113,7 +111,6 @@ function splitKnowledgeText(
       .filter(Boolean);
 
   const chunks: string[] = [];
-
   const maxLength = 600;
 
   for (
@@ -123,10 +120,7 @@ function splitKnowledgeText(
       paragraph.length <=
       maxLength
     ) {
-      chunks.push(
-        paragraph
-      );
-
+      chunks.push(paragraph);
       continue;
     }
 
@@ -155,24 +149,19 @@ function splitKnowledgeText(
         candidate.length <=
         maxLength
       ) {
-        current =
-          candidate;
-
+        current = candidate;
         continue;
       }
 
       if (current) {
-        chunks.push(
-          current
-        );
+        chunks.push(current);
       }
 
       if (
         sentence.length <=
         maxLength
       ) {
-        current =
-          sentence;
+        current = sentence;
       } else {
         for (
           let start = 0;
@@ -183,8 +172,7 @@ function splitKnowledgeText(
           chunks.push(
             sentence.slice(
               start,
-              start +
-                maxLength
+              start + maxLength
             )
           );
         }
@@ -194,71 +182,11 @@ function splitKnowledgeText(
     }
 
     if (current) {
-      chunks.push(
-        current
-      );
+      chunks.push(current);
     }
   }
 
   return chunks;
-}
-
-/*
- * Development-only deterministic embedding.
- *
- * Sau này thay function này bằng AI embedding
- * adapter thật khi model embedding được chốt.
- */
-function createDevEmbedding(
-  text: string
-): number[] {
-  const vector =
-    new Array<number>(
-      8
-    ).fill(0);
-
-  const normalized =
-    text.toLowerCase();
-
-  for (
-    let index = 0;
-    index <
-    normalized.length;
-    index += 1
-  ) {
-    const bucket =
-      index %
-      vector.length;
-
-    vector[bucket] +=
-      normalized.charCodeAt(
-        index
-      ) /
-      1000;
-  }
-
-  const magnitude =
-    Math.sqrt(
-      vector.reduce(
-        (
-          total,
-          value
-        ) =>
-          total +
-          value * value,
-        0
-      )
-    );
-
-  if (magnitude === 0) {
-    return vector;
-  }
-
-  return vector.map(
-    (value) =>
-      value /
-      magnitude
-  );
 }
 
 export async function createStaffKnowledgeDocument(
@@ -290,9 +218,7 @@ export async function createStaffKnowledgeDocument(
     );
 
   return {
-    id: Number(
-      document.document_id
-    ),
+    id: Number(document.document_id),
 
     attraction_id:
       document.attraction_id === null
@@ -317,17 +243,13 @@ export async function createStaffKnowledgeDocument(
       document.body_text,
 
     version:
-      Number(
-        document.version
-      ),
+      Number(document.version),
 
     status:
       document.status,
 
     created_by:
-      Number(
-        document.created_by
-      ),
+      Number(document.created_by),
 
     approved_by:
       document.approved_by === null
@@ -368,9 +290,7 @@ export async function reindexStaffKnowledgeDocument(
   }
 
   const textChunks =
-    splitKnowledgeText(
-      bodyText
-    );
+    splitKnowledgeText(bodyText);
 
   if (
     textChunks.length === 0
@@ -378,12 +298,36 @@ export async function reindexStaffKnowledgeDocument(
     throw new StaffKnowledgeReindexConflictError();
   }
 
-  const embeddingModel =
-    "dev-local-v1";
+  const provider =
+    getEmbeddingProvider();
 
-  /*
-   * Embedding được tính trước transaction.
-   */
+  let embeddingResult;
+
+  try {
+    embeddingResult =
+      await provider.embedTexts(
+        textChunks
+      );
+  } catch (error) {
+    if (
+      error instanceof
+      EmbeddingProviderError
+    ) {
+      throw new StaffKnowledgeEmbeddingUnavailableError();
+    }
+
+    throw error;
+  }
+
+  if (
+    embeddingResult.embeddings.length !==
+      textChunks.length
+  ) {
+    throw new Error(
+      "Embedding result count does not match chunk count"
+    );
+  }
+
   const chunks =
     textChunks.map(
       (content, index) => ({
@@ -392,12 +336,12 @@ export async function reindexStaffKnowledgeDocument(
 
         content,
 
-        embeddingModel,
+        embeddingModel:
+          embeddingResult.modelKey,
 
         embedding:
-          createDevEmbedding(
-            content
-          ),
+          embeddingResult
+            .embeddings[index],
       })
     );
 
@@ -426,6 +370,6 @@ export async function reindexStaffKnowledgeDocument(
       result.chunkCount,
 
     embedding_model:
-      embeddingModel,
+      embeddingResult.modelKey,
   };
 }

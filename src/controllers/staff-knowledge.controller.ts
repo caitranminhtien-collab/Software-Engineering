@@ -8,6 +8,7 @@ import {
   reindexStaffKnowledgeDocument,
   StaffKnowledgeAttractionNotFoundError,
   StaffKnowledgeDocumentNotFoundError,
+  StaffKnowledgeEmbeddingUnavailableError,
   StaffKnowledgeReindexConflictError,
 } from "../services/staff-knowledge.service";
 
@@ -128,6 +129,22 @@ export async function reindexStaffKnowledgeController(
             "KNOWLEDGE_REINDEX_CONFLICT",
           message:
             "Knowledge document cannot be indexed in its current state",
+        },
+      });
+
+      return;
+    }
+
+    if (
+      error instanceof
+      StaffKnowledgeEmbeddingUnavailableError
+    ) {
+      res.status(503).json({
+        error: {
+          code:
+            "EMBEDDING_SERVICE_UNAVAILABLE",
+          message:
+            "Embedding service is temporarily unavailable",
         },
       });
 

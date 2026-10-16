@@ -14,15 +14,25 @@ export interface KnowledgeChunkRow
   chunk_order: number;
   content: string;
 
+  embedding_model:
+    | string
+    | null;
+
+  embedding:
+    | number[]
+    | null;
+
   attraction_id:
     | string
     | null;
 
   title: string;
   language_code: string;
+
   source_url:
     | string
     | null;
+
   source_credit: string;
 }
 
@@ -39,6 +49,8 @@ export async function findApprovedKnowledgeChunks(
           c.document_version,
           c.chunk_order,
           c.content,
+          c.embedding_model,
+          c.embedding,
 
           d.attraction_id,
           d.title,
@@ -48,50 +60,27 @@ export async function findApprovedKnowledgeChunks(
 
         FROM knowledge_chunks AS c
 
-        INNER JOIN knowledge_documents
-          AS d
-          ON
-            d.document_id =
-              c.document_id
+        INNER JOIN knowledge_documents AS d
+          ON d.document_id = c.document_id
+         AND d.version = c.document_version
 
-          AND
-            d.version =
-              c.document_version
-
-        WHERE
-          d.status =
-            'approved'
-
-          AND
-            d.language_code =
-            $1
-
+        WHERE d.status = 'approved'
+          AND d.language_code = $1
           AND (
             $2::bigint IS NULL
-
-            OR
-              d.attraction_id =
-              $2
-
-            OR
-              d.attraction_id
-              IS NULL
+            OR d.attraction_id = $2
+            OR d.attraction_id IS NULL
           )
 
         ORDER BY
           CASE
-            WHEN
-              $2::bigint IS NOT NULL
-              AND d.attraction_id = $2
+            WHEN $2::bigint IS NOT NULL
+             AND d.attraction_id = $2
             THEN 0
-
-            WHEN
-              d.attraction_id IS NULL
+            WHEN d.attraction_id IS NULL
             THEN 1
-
             ELSE 2
           END,
-
           d.document_id ASC,
           c.chunk_order ASC
       `,

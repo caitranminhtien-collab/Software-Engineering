@@ -3,6 +3,15 @@ import {
   type KnowledgeChunkRow,
 } from "../repositories/knowledge.repository";
 
+import {
+  getEmbeddingProvider,
+} from "../adapters/embedding/embedding-provider.factory";
+
+import {
+  EmbeddingProviderError,
+  isFiniteVector,
+} from "../adapters/embedding/embedding-provider";
+
 export interface KnowledgeCitation {
   chunk_id: number;
   document_id: number;
@@ -24,6 +33,18 @@ export interface KnowledgeSearchResult {
   matches: KnowledgeMatch[];
   content_language: string;
   fallback_used: boolean;
+}
+
+export class KnowledgeEmbeddingUnavailableError
+  extends Error {
+  constructor() {
+    super(
+      "Knowledge embedding service is unavailable"
+    );
+
+    this.name =
+      "KnowledgeEmbeddingUnavailableError";
+  }
 }
 
 const STOP_WORDS = new Set([
@@ -86,15 +107,13 @@ function getKeywords(
   ];
 }
 
-function calculateScore(
+function calculateLexicalScore(
   question: string,
   chunk: KnowledgeChunkRow,
   attractionId: number | null
 ): number {
   const keywords =
-    getKeywords(
-      question
-    );
+    getKeywords(question);
 
   if (
     keywords.length === 0
@@ -103,9 +122,7 @@ function calculateScore(
   }
 
   const normalizedTitle =
-    normalizeText(
-      chunk.title
-    );
+    normalizeText(chunk.title);
 
   const normalizedContent =
     normalizeText(
@@ -134,12 +151,6 @@ function calculateScore(
     }
   }
 
-  /*
-   * attraction_id chỉ là request context.
-   * Chỉ boost khi chunk đã có lexical match,
-   * tránh trả nội dung không liên quan chỉ vì
-   * cùng attraction.
-   */
   if (
     score > 0 &&
     attractionId !== null &&
@@ -153,6 +164,82 @@ function calculateScore(
   }
 
   return score;
+}
+
+function cosineSimilarity(
+  left: number[],
+  right: number[]
+): number | null {
+  if (
+    left.length === 0 ||
+    left.length !==
+      right.length
+  ) {
+    return null;
+  }
+
+  let dot = 0;
+  let leftMagnitude = 0;
+  let rightMagnitude = 0;
+
+  for (
+    let index = 0;
+    index <
+    left.length;
+    index += 1
+  ) {
+    const leftValue =
+      left[index];
+
+    const rightValue =
+      right[index];
+
+    dot +=
+      leftValue *
+      rightValue;
+
+    leftMagnitude +=
+      leftValue *
+      leftValue;
+
+    rightMagnitude +=
+      rightValue *
+      rightValue;
+  }
+
+  if (
+    leftMagnitude === 0 ||
+    rightMagnitude === 0
+  ) {
+    return null;
+  }
+
+  return (
+    dot /
+    (
+      Math.sqrt(leftMagnitude) *
+      Math.sqrt(rightMagnitude)
+    )
+  );
+}
+
+function getSemanticMinimumScore():
+  number {
+  const configured =
+    Number(
+      process.env
+        .KNOWLEDGE_SEMANTIC_MIN_SCORE
+    );
+
+  if (
+    Number.isFinite(configured) &&
+    configured >= -1 &&
+    configured <= 1
+  ) {
+    return configured;
+  }
+
+  return 0.35;
 }
 
 async function loadKnowledgeChunks(
@@ -170,15 +257,16 @@ async function loadKnowledgeChunks(
     );
 
   if (
-    requestedChunks.length >
-      0 ||
+    requestedChunks.length > 0 ||
     languageCode === "vi"
   ) {
     return {
       chunks:
         requestedChunks,
+
       contentLanguage:
         languageCode,
+
       fallbackUsed:
         false,
     };
@@ -193,8 +281,10 @@ async function loadKnowledgeChunks(
   return {
     chunks:
       fallbackChunks,
+
     contentLanguage:
       "vi",
+
     fallbackUsed:
       true,
   };
@@ -217,60 +307,167 @@ export async function searchKnowledge(
       attractionId
     );
 
+  if (
+    chunks.length === 0
+  ) {
+    return {
+      matches: [],
+      content_language:
+        contentLanguage,
+      fallback_used:
+        fallbackUsed,
+    };
+  }
+
+  const provider =
+    getEmbeddingProvider();
+
+  const hasCompatibleEmbeddings =
+    chunks.some(
+      (chunk) =>
+        chunk.embedding_model ===
+          provider.modelKey &&
+        isFiniteVector(
+          chunk.embedding
+        )
+    );
+
+  let queryEmbedding:
+    | number[]
+    | null = null;
+
+  if (
+    hasCompatibleEmbeddings
+  ) {
+    try {
+      const result =
+        await provider.embedTexts([
+          question,
+        ]);
+
+      queryEmbedding =
+        result.embeddings[0] ??
+        null;
+    } catch (error) {
+      if (
+        error instanceof
+        EmbeddingProviderError
+      ) {
+        throw new KnowledgeEmbeddingUnavailableError();
+      }
+
+      throw error;
+    }
+  }
+
+  const semanticMinimum =
+    getSemanticMinimumScore();
+
+  const isDevProvider =
+    provider.modelKey.startsWith(
+      "dev-"
+    );
+
   const scoredChunks =
     chunks
-      .map((chunk) => ({
-        chunk,
-        score:
-          calculateScore(
+      .map((chunk) => {
+        const lexicalScore =
+          calculateLexicalScore(
             question,
             chunk,
             attractionId
-          ),
-      }))
+          );
+
+        let semanticScore:
+          | number
+          | null = null;
+
+        if (
+          queryEmbedding &&
+          chunk.embedding_model ===
+            provider.modelKey &&
+          isFiniteVector(
+            chunk.embedding
+          )
+        ) {
+          semanticScore =
+            cosineSimilarity(
+              queryEmbedding,
+              chunk.embedding
+            );
+        }
+
+        const relevant =
+          isDevProvider
+            ? lexicalScore > 0
+            : (
+                lexicalScore > 0 ||
+                (
+                  semanticScore !==
+                    null &&
+                  semanticScore >=
+                    semanticMinimum
+                )
+              );
+
+        const combinedScore =
+          lexicalScore +
+          (
+            semanticScore === null
+              ? 0
+              : isDevProvider
+              ? semanticScore *
+                0.25
+              : semanticScore *
+                10
+          );
+
+        return {
+          chunk,
+          combinedScore,
+          relevant,
+        };
+      })
       .filter(
         (item) =>
-          item.score > 0
+          item.relevant
       )
       .sort(
         (a, b) =>
-          b.score -
-          a.score
+          b.combinedScore -
+          a.combinedScore
       );
 
   const bestScore =
     scoredChunks[0]
-      ?.score ?? 0;
+      ?.combinedScore ?? 0;
 
-  /*
-   * Chỉ giữ các chunk đủ gần
-   * với kết quả tốt nhất.
-   */
   const minimumRelevantScore =
     bestScore <= 2
       ? bestScore
-      : Math.ceil(
-          bestScore *
-            0.5
-        );
+      : bestScore * 0.5;
 
   const matches =
     scoredChunks
       .filter(
         (item) =>
-          item.score >=
+          item.combinedScore >=
           minimumRelevantScore
       )
       .slice(0, 3)
       .map(
         ({
           chunk,
-          score,
+          combinedScore,
         }) => ({
           content:
             chunk.content,
 
-          score,
+          score:
+            Number(
+              combinedScore
+                .toFixed(6)
+            ),
 
           citation: {
             chunk_id:
