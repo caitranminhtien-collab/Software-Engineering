@@ -11,7 +11,6 @@ import {
 
 import {
   checkRedisConnection,
-  connectRedis,
 } from "./config/redis";
 
 import {
@@ -36,11 +35,6 @@ const app = express();
 
 app.use(express.json());
 
-/*
- * Development/local media storage.
- * Production should normally serve media
- * through object storage / CDN instead.
- */
 app.use(
   "/uploads/media",
   express.static(
@@ -52,9 +46,6 @@ app.use(
   )
 );
 
-/*
- * Health endpoints không cần staff session.
- */
 app.get(
   "/api/v1/health/live",
   (_req, res) => {
@@ -121,14 +112,8 @@ app.get(
   }
 );
 
-/*
- * Staff server-side session.
- */
 app.use(staffSessionMiddleware);
 
-/*
- * Public / visitor routes.
- */
 app.use(
   "/api/v1/audio-plays",
   audioPlayRoutes
@@ -159,20 +144,11 @@ app.use(
   locationSuggestionRoutes
 );
 
-/*
- * Staff authentication.
- */
 app.use(
   "/api/v1/staff/auth",
   staffAuthRoutes
 );
 
-/*
- * Staff resource routes.
- *
- * Các route cụ thể đặt trước
- * generic workflow route.
- */
 app.use(
   "/api/v1/staff/attractions",
   staffAttractionRoutes
@@ -193,41 +169,9 @@ app.use(
   staffAccountRoutes
 );
 
-/*
- * Generic workflow:
- *
- * /staff/:resource/:id/submit
- * /staff/:resource/:id/review
- * /staff/:resource/:id/publish
- */
 app.use(
   "/api/v1/staff",
   staffWorkflowRoutes
 );
 
-const PORT =
-  process.env.PORT || 3000;
-
-async function startServer(): Promise<void> {
-  try {
-    await connectRedis();
-
-    app.listen(
-      PORT,
-      () => {
-        console.log(
-          `Server is running on port ${PORT}`
-        );
-      }
-    );
-  } catch (error) {
-    console.error(
-      "Application startup failed:",
-      error
-    );
-
-    process.exit(1);
-  }
-}
-
-void startServer();
+export default app;
