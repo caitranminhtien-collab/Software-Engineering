@@ -204,3 +204,32 @@ export async function updateEditableAttraction(
 
   return result.rows[0] ?? null;
 }
+
+export async function findAllStaffAttractions(): Promise<
+  StaffAttractionRow[]
+> {
+  const result =
+    await db.query<StaffAttractionRow>(
+      `
+        SELECT
+          attraction_id,
+          slug,
+          area_code,
+          latitude,
+          longitude,
+          trigger_radius_m,
+          status,
+          content_version,
+          created_by,
+          approved_by,
+          published_at,
+          updated_at
+        FROM attractions
+        ORDER BY
+          updated_at DESC,
+          attraction_id DESC
+      `
+    );
+
+  return result.rows;
+}

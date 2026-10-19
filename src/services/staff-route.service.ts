@@ -4,6 +4,8 @@ import {
   findStaffRouteById,
   findStaffRouteBySlug,
   replaceRouteStopsAtomically,
+  findAllStaffRoutes,
+  findStaffRouteStopsByRouteId,
 } from "../repositories/staff-route.repository";
 
 import type {
@@ -284,5 +286,63 @@ export async function replaceStaffRouteStops(
               .travelMinutesFromPrevious,
         })
       ),
+  };
+}
+export interface StaffRouteDetailResult {
+  route: StaffRouteResult;
+  stops: {
+    attraction_id: number;
+    stop_order: number;
+    visit_minutes: number | null;
+    travel_minutes_from_previous: number | null;
+  }[];
+}
+
+export async function listStaffRoutes(): Promise<
+  StaffRouteResult[]
+> {
+  const routes =
+    await findAllStaffRoutes();
+
+  return routes.map(mapStaffRoute);
+}
+
+export async function getStaffRoute(
+  routeId: number
+): Promise<StaffRouteDetailResult> {
+  const route =
+    await findStaffRouteById(routeId);
+
+  if (!route) {
+    throw new StaffRouteNotFoundError();
+  }
+
+  const stops =
+    await findStaffRouteStopsByRouteId(
+      routeId
+    );
+
+  return {
+    route: mapStaffRoute(route),
+
+    stops: stops.map((stop) => ({
+      attraction_id: Number(
+        stop.attraction_id
+      ),
+      stop_order: Number(
+        stop.stop_order
+      ),
+      visit_minutes:
+        stop.visit_minutes === null
+          ? null
+          : Number(stop.visit_minutes),
+      travel_minutes_from_previous:
+        stop.travel_minutes_from_previous ===
+        null
+          ? null
+          : Number(
+              stop.travel_minutes_from_previous
+            ),
+    })),
   };
 }

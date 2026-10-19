@@ -7,9 +7,12 @@ import {
   AttractionSlugConflictError,
   AttractionWorkflowConflictError,
   createStaffAttraction,
+  getStaffAttraction,
+  listStaffAttractions,
   StaffAttractionNotFoundError,
   updateStaffAttraction,
 } from "../services/staff-attraction.service";
+
 
 import type {
   CreateStaffAttractionBody,
@@ -20,7 +23,83 @@ import type {
 interface StaffLocal {
   id: number;
 }
+export async function listStaffAttractionsController(
+  _req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const attractions =
+      await listStaffAttractions();
 
+    res.status(200).json({
+      data: attractions,
+    });
+  } catch (error) {
+    console.error(
+      "List staff attractions failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: {
+        code:
+          "INTERNAL_SERVER_ERROR",
+        message:
+          "Unable to list attractions",
+      },
+    });
+  }
+}
+
+export async function getStaffAttractionController(
+  _req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const {
+      attractionId,
+    } = res.locals
+      .staffAttractionParams as UpdateStaffAttractionParams;
+
+    const attraction =
+      await getStaffAttraction(
+        attractionId
+      );
+
+    res.status(200).json({
+      data: attraction,
+    });
+  } catch (error) {
+    if (
+      error instanceof
+      StaffAttractionNotFoundError
+    ) {
+      res.status(404).json({
+        error: {
+          code: "NOT_FOUND",
+          message:
+            "Attraction not found",
+        },
+      });
+
+      return;
+    }
+
+    console.error(
+      "Get staff attraction failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: {
+        code:
+          "INTERNAL_SERVER_ERROR",
+        message:
+          "Unable to get attraction",
+      },
+    });
+  }
+}
 export async function createStaffAttractionController(
   _req: Request,
   res: Response

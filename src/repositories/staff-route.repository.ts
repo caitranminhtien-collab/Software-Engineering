@@ -350,3 +350,57 @@ export async function replaceRouteStopsAtomically(
     client.release();
   }
 }
+export interface StaffRouteStopRow
+  extends QueryResultRow {
+  attraction_id: string;
+  stop_order: number;
+  visit_minutes: number | null;
+  travel_minutes_from_previous: number | null;
+}
+
+export async function findAllStaffRoutes(): Promise<
+  StaffRouteRow[]
+> {
+  const result = await db.query<StaffRouteRow>(
+    `
+      SELECT
+        route_id,
+        slug,
+        name_vi,
+        description_vi,
+        area_code,
+        estimated_minutes,
+        verified_at,
+        status,
+        content_version,
+        created_by,
+        approved_by,
+        published_at
+      FROM routes
+      ORDER BY route_id DESC
+    `
+  );
+
+  return result.rows;
+}
+
+export async function findStaffRouteStopsByRouteId(
+  routeId: number
+): Promise<StaffRouteStopRow[]> {
+  const result =
+    await db.query<StaffRouteStopRow>(
+      `
+        SELECT
+          attraction_id,
+          stop_order,
+          visit_minutes,
+          travel_minutes_from_previous
+        FROM route_stops
+        WHERE route_id = $1
+        ORDER BY stop_order ASC
+      `,
+      [routeId]
+    );
+
+  return result.rows;
+}

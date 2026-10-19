@@ -2,6 +2,8 @@ import { Router } from "express";
 
 import {
   createStaffAttractionController,
+  getStaffAttractionController,
+  listStaffAttractionsController,
   updateStaffAttractionController,
 } from "../controllers/staff-attraction.controller";
 
@@ -46,7 +48,28 @@ import {
 } from "../validators/staff-localization.validator";
 
 const router = Router();
+router.get(
+  "/",
+  requireStaffSession,
+  requireStaffRole(
+    "editor",
+    "reviewer",
+    "admin"
+  ),
+  listStaffAttractionsController
+);
 
+router.get(
+  "/:id",
+  requireStaffSession,
+  requireStaffRole(
+    "editor",
+    "reviewer",
+    "admin"
+  ),
+  validateStaffAttractionId,
+  getStaffAttractionController
+);
 router.post(
   "/",
   requireStaffSession,

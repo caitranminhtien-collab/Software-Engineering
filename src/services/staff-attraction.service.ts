@@ -1,5 +1,6 @@
 import {
   createDraftAttraction,
+  findAllStaffAttractions,
   findAttractionBySlug,
   findStaffAttractionById,
   updateEditableAttraction,
@@ -141,6 +142,97 @@ export class StaffAttractionNotFoundError
     this.name =
       "StaffAttractionNotFoundError";
   }
+}
+export interface StaffAttractionResult {
+  id: number;
+  slug: string;
+  area_code: string;
+  latitude: number;
+  longitude: number;
+  trigger_radius_m: number;
+  status:
+    | "draft"
+    | "in_review"
+    | "published"
+    | "archived";
+  content_version: number;
+  created_by: number;
+  approved_by: number | null;
+  published_at: Date | null;
+  updated_at: Date;
+}
+
+function mapStaffAttraction(
+  attraction: {
+    attraction_id: string;
+    slug: string;
+    area_code: string;
+    latitude: number;
+    longitude: number;
+    trigger_radius_m: number;
+    status:
+      | "draft"
+      | "in_review"
+      | "published"
+      | "archived";
+    content_version: number;
+    created_by: string;
+    approved_by: string | null;
+    published_at: Date | null;
+    updated_at: Date;
+  }
+): StaffAttractionResult {
+  return {
+    id: Number(attraction.attraction_id),
+    slug: attraction.slug,
+    area_code: attraction.area_code,
+    latitude: attraction.latitude,
+    longitude: attraction.longitude,
+    trigger_radius_m:
+      attraction.trigger_radius_m,
+    status: attraction.status,
+    content_version:
+      attraction.content_version,
+    created_by: Number(
+      attraction.created_by
+    ),
+    approved_by:
+      attraction.approved_by === null
+        ? null
+        : Number(
+            attraction.approved_by
+          ),
+    published_at:
+      attraction.published_at,
+    updated_at:
+      attraction.updated_at,
+  };
+}
+
+export async function listStaffAttractions(): Promise<
+  StaffAttractionResult[]
+> {
+  const attractions =
+    await findAllStaffAttractions();
+
+  return attractions.map(
+    mapStaffAttraction
+  );
+}
+
+export async function getStaffAttraction(
+  attractionId: number
+): Promise<StaffAttractionResult> {
+  const attraction =
+    await findStaffAttractionById(
+      attractionId
+    );
+
+  if (!attraction) {
+    throw new StaffAttractionNotFoundError();
+  }
+
+  return mapStaffAttraction(attraction);
 }
 
 export class AttractionWorkflowConflictError

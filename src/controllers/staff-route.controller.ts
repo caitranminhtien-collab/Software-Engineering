@@ -10,6 +10,8 @@ import {
   StaffRouteEditConflictError,
   StaffRouteNotFoundError,
   StaffRouteSlugConflictError,
+  getStaffRoute,
+  listStaffRoutes,
 } from "../services/staff-route.service";
 
 import type {
@@ -173,6 +175,76 @@ export async function replaceStaffRouteStopsController(
           "INTERNAL_SERVER_ERROR",
         message:
           "Unable to replace route stops",
+      },
+    });
+  }
+}
+export async function listStaffRoutesController(
+  _req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const routes =
+      await listStaffRoutes();
+
+    res.status(200).json({
+      data: routes,
+    });
+  } catch (error) {
+    console.error(
+      "List staff routes failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unable to list routes",
+      },
+    });
+  }
+}
+
+export async function getStaffRouteController(
+  _req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const {
+      routeId,
+    } = res.locals
+      .staffRouteParams as StaffRouteParams;
+
+    const result =
+      await getStaffRoute(routeId);
+
+    res.status(200).json({
+      data: result,
+    });
+  } catch (error) {
+    if (
+      error instanceof
+      StaffRouteNotFoundError
+    ) {
+      res.status(404).json({
+        error: {
+          code: "NOT_FOUND",
+          message: "Route not found",
+        },
+      });
+
+      return;
+    }
+
+    console.error(
+      "Get staff route failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unable to get route",
       },
     });
   }

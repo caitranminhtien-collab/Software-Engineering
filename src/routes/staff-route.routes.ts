@@ -4,6 +4,8 @@ import {
 
 import {
   createStaffRouteController,
+  getStaffRouteController,
+  listStaffRoutesController,
   replaceStaffRouteStopsController,
 } from "../controllers/staff-route.controller";
 
@@ -26,7 +28,28 @@ import {
 } from "../validators/staff-route.validator";
 
 const router = Router();
+router.get(
+  "/",
+  requireStaffSession,
+  requireStaffRole(
+    "editor",
+    "reviewer",
+    "admin"
+  ),
+  listStaffRoutesController
+);
 
+router.get(
+  "/:id",
+  requireStaffSession,
+  requireStaffRole(
+    "editor",
+    "reviewer",
+    "admin"
+  ),
+  validateStaffRouteParams,
+  getStaffRouteController
+);
 router.post(
   "/",
   requireStaffSession,
