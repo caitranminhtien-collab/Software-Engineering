@@ -63,7 +63,8 @@
 
 .staff-login button:disabled,
 .workflow-actions button:disabled,
-.staff-session__actions button:disabled {
+.staff-session__actions button:disabled,
+.guided-demo__steps button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -216,5 +217,87 @@
 
   .staff-session {
     flex-direction: column;
+  }
+}
+
+
+.guided-demo {
+  margin-top: 22px;
+  padding: 19px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.065);
+}
+
+.guided-demo__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.guided-demo h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+}
+
+.guided-demo__description {
+  margin: 11px 0 15px;
+  color: #d6c8bc;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.guided-demo__steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.guided-demo__steps button {
+  padding: 11px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+  font-weight: 850;
+}
+
+.guided-demo__steps button:last-child {
+  border-color: #f0ddca;
+  background: #f0ddca;
+  color: #3d2c21;
+}
+
+.demo-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 13px;
+}
+
+.demo-ids span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.11);
+  color: #eee3d9;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.guided-demo__status {
+  margin-top: 13px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  background: rgba(0, 0, 0, 0.16);
+  color: #eadfd6;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 600px) {
+  .guided-demo__steps {
+    grid-template-columns: 1fr;
   }
 }

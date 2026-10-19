@@ -15,6 +15,13 @@ interface StaffIdentity {
   active: boolean | null;
 }
 
+interface DemoResourceIds {
+  attractionId: number;
+  localizationId: number;
+  slug: string;
+  name: string;
+}
+
 function getObject(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null
     ? (value as Record<string, unknown>)
@@ -62,6 +69,44 @@ function readCsrfToken(payload: unknown): string {
   return typeof candidate === "string" ? candidate : "";
 }
 
+function findPositiveInteger(
+  payload: unknown,
+  keys: string[]
+): number | null {
+  const visited = new Set<object>();
+
+  function walk(value: unknown): number | null {
+    if (typeof value !== "object" || value === null) {
+      return null;
+    }
+
+    if (visited.has(value)) {
+      return null;
+    }
+
+    visited.add(value);
+    const record = value as Record<string, unknown>;
+
+    for (const key of keys) {
+      const candidate = record[key];
+      const numeric = Number(candidate);
+
+      if (Number.isInteger(numeric) && numeric > 0) {
+        return numeric;
+      }
+    }
+
+    for (const nested of Object.values(record)) {
+      const found = walk(nested);
+      if (found !== null) return found;
+    }
+
+    return null;
+  }
+
+  return walk(payload);
+}
+
 async function readErrorMessage(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as unknown;
@@ -93,6 +138,10 @@ function StaffDemo() {
   const [resourceId, setResourceId] = useState("");
   const [workflowLoading, setWorkflowLoading] = useState(false);
   const [workflowResult, setWorkflowResult] = useState("");
+
+  const [demoIds, setDemoIds] = useState<DemoResourceIds | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoStatus, setDemoStatus] = useState("Chưa tạo dữ liệu demo.");
 
   async function loadSessionAndCsrf() {
     const [meResponse, csrfResponse] = await Promise.all([
@@ -223,6 +272,236 @@ function StaffDemo() {
       );
     } finally {
       setLoginLoading(false);
+    }
+  }
+
+  async function callWorkflow(
+    targetResource: StaffResource,
+    id: number,
+    action: "submit" | "approve" | "reject" | "publish"
+  ): Promise<unknown> {
+    if (!csrfToken) {
+      throw new Error("CSRF token chưa sẵn sàng.");
+    }
+
+    const endpointAction =
+      action === "approve" || action === "reject"
+        ? "review"
+        : action;
+
+    const response = await fetch(
+      `/api/v1/staff/${targetResource}/${id}/${endpointAction}`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
+        body:
+          action === "approve" || action === "reject"
+            ? JSON.stringify({ decision: action })
+            : undefined,
+      }
+    );
+
+    const body = (await response.json()) as unknown;
+
+    if (!response.ok) {
+      const root = getObject(body);
+      const error = root ? getObject(root.error) : null;
+      const errorMessage =
+        error && typeof error.message === "string"
+          ? error.message
+          : `HTTP ${response.status}`;
+
+      throw new Error(errorMessage);
+    }
+
+    return body;
+  }
+
+  async function createDemoAttraction() {
+    if (!staff || !csrfToken) {
+      setDemoStatus("Hãy đăng nhập staff trước.");
+      return;
+    }
+
+    try {
+      setDemoLoading(true);
+      setDemoIds(null);
+
+      const suffix = Date.now();
+      const slug = `demo-workflow-${suffix}`;
+      const name = `Điểm demo workflow ${new Date().toLocaleTimeString("vi-VN")}`;
+
+      setDemoStatus("1/2 Đang tạo attraction draft...");
+
+      const attractionResponse = await fetch("/api/v1/staff/attractions", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
+        body: JSON.stringify({
+          slug,
+          area_code: "HUE_DEMO",
+          latitude: 16.4637,
+          longitude: 107.5909,
+          trigger_radius_m: 50,
+        }),
+      });
+
+      const attractionBody = (await attractionResponse.json()) as unknown;
+
+      if (!attractionResponse.ok) {
+        const root = getObject(attractionBody);
+        const error = root ? getObject(root.error) : null;
+        throw new Error(
+          error && typeof error.message === "string"
+            ? error.message
+            : `HTTP ${attractionResponse.status}`
+        );
+      }
+
+      const attractionId = findPositiveInteger(attractionBody, [
+        "attraction_id",
+        "attractionId",
+        "id",
+      ]);
+
+      if (!attractionId) {
+        throw new Error("Không đọc được attraction_id từ response.");
+      }
+
+      setDemoStatus(
+        `2/2 Attraction #${attractionId} đã tạo. Đang thêm localization VI...`
+      );
+
+      const localizationResponse = await fetch(
+        `/api/v1/staff/attractions/${attractionId}/localizations/vi`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "x-csrf-token": csrfToken,
+          },
+          body: JSON.stringify({
+            name,
+            description:
+              "Dữ liệu dùng để demo quy trình staff: tạo bản nháp, gửi duyệt, phê duyệt và xuất bản.",
+            source_references: [
+              {
+                title: "Hue Tourism Guide Demo Source",
+                source_credit: "Hue Tourism Guide Project",
+                source_url: "https://example.com/hue-tourism-demo-source",
+              },
+            ],
+          }),
+        }
+      );
+
+      const localizationBody =
+        (await localizationResponse.json()) as unknown;
+
+      if (!localizationResponse.ok) {
+        const root = getObject(localizationBody);
+        const error = root ? getObject(root.error) : null;
+        throw new Error(
+          error && typeof error.message === "string"
+            ? error.message
+            : `HTTP ${localizationResponse.status}`
+        );
+      }
+
+      const localizationId = findPositiveInteger(localizationBody, [
+        "localization_id",
+        "attraction_localization_id",
+        "localizationId",
+        "id",
+      ]);
+
+      if (!localizationId) {
+        throw new Error(
+          `Attraction #${attractionId} đã tạo nhưng không đọc được localization_id.`
+        );
+      }
+
+      setDemoIds({ attractionId, localizationId, slug, name });
+      setResource("attractions");
+      setResourceId(String(attractionId));
+      setDemoStatus(
+        `Draft PASS: Attraction #${attractionId}, Localization #${localizationId}.`
+      );
+    } catch (error) {
+      setDemoStatus(
+        error instanceof Error
+          ? `Tạo demo thất bại: ${error.message}`
+          : "Tạo demo thất bại."
+      );
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
+  async function submitDemoResources() {
+    if (!demoIds) return;
+
+    try {
+      setDemoLoading(true);
+      setDemoStatus(`Đang Submit Attraction #${demoIds.attractionId}...`);
+      await callWorkflow("attractions", demoIds.attractionId, "submit");
+      setDemoStatus(`Đang Submit Localization #${demoIds.localizationId}...`);
+      await callWorkflow("localizations", demoIds.localizationId, "submit");
+      setDemoStatus("Submit PASS: cả Attraction và Localization đã vào review.");
+    } catch (error) {
+      setDemoStatus(
+        error instanceof Error ? `Submit thất bại: ${error.message}` : "Submit thất bại."
+      );
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
+  async function approveDemoResources() {
+    if (!demoIds) return;
+
+    try {
+      setDemoLoading(true);
+      setDemoStatus(`Đang Approve Attraction #${demoIds.attractionId}...`);
+      await callWorkflow("attractions", demoIds.attractionId, "approve");
+      setDemoStatus(`Đang Approve Localization #${demoIds.localizationId}...`);
+      await callWorkflow("localizations", demoIds.localizationId, "approve");
+      setDemoStatus("Approve PASS: cả Attraction và Localization đã được duyệt.");
+    } catch (error) {
+      setDemoStatus(
+        error instanceof Error ? `Approve thất bại: ${error.message}` : "Approve thất bại."
+      );
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
+  async function publishDemoResources() {
+    if (!demoIds) return;
+
+    try {
+      setDemoLoading(true);
+      setDemoStatus(`Đang Publish Localization #${demoIds.localizationId}...`);
+      await callWorkflow("localizations", demoIds.localizationId, "publish");
+      setDemoStatus(`Đang Publish Attraction #${demoIds.attractionId}...`);
+      await callWorkflow("attractions", demoIds.attractionId, "publish");
+      setDemoStatus(
+        `Publish PASS 🎉 ${demoIds.name}. Ctrl+F5 để kiểm tra phía Visitor.`
+      );
+    } catch (error) {
+      setDemoStatus(
+        error instanceof Error ? `Publish thất bại: ${error.message}` : "Publish thất bại."
+      );
+    } finally {
+      setDemoLoading(false);
     }
   }
 
@@ -360,6 +639,50 @@ function StaffDemo() {
         )}
 
         {message && <div className="staff-message">{message}</div>}
+
+        <section className="guided-demo">
+          <div className="guided-demo__header">
+            <div>
+              <p className="eyebrow">Guided Demo</p>
+              <h3>Demo publish từ đầu đến cuối</h3>
+            </div>
+            <span className={csrfToken ? "csrf-ready" : "csrf-waiting"}>
+              CSRF: {csrfToken ? "ready" : "chưa có"}
+            </span>
+          </div>
+
+          <p className="guided-demo__description">
+            Tạo Attraction + localization VI bằng API thật, rồi chạy workflow.
+          </p>
+
+          <div className="guided-demo__steps">
+            <button type="button" onClick={() => void createDemoAttraction()} disabled={!staff || demoLoading}>
+              1. Tạo Draft
+            </button>
+            <button type="button" onClick={() => void submitDemoResources()} disabled={!staff || !demoIds || demoLoading}>
+              2. Submit
+            </button>
+            <button type="button" onClick={() => void approveDemoResources()} disabled={!staff || !demoIds || demoLoading}>
+              3. Approve
+            </button>
+            <button type="button" onClick={() => void publishDemoResources()} disabled={!staff || !demoIds || demoLoading}>
+              4. Publish
+            </button>
+          </div>
+
+          {demoIds && (
+            <div className="demo-ids">
+              <span>Attraction #{demoIds.attractionId}</span>
+              <span>Localization #{demoIds.localizationId}</span>
+              <span>{demoIds.slug}</span>
+            </div>
+          )}
+
+          <div className="guided-demo__status">
+            {demoLoading ? "Đang gọi backend... " : ""}
+            {demoStatus}
+          </div>
+        </section>
       </div>
 
       <div className="workflow-demo">
