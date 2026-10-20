@@ -1,6 +1,7 @@
 import {
   ChatGenerationUnavailableError,
   generateChatAnswer,
+  type ChatAnswerResult,
 } from "../adapters/llm/chat-answer.provider";
 
 import {
@@ -22,11 +23,7 @@ export interface ChatMessageResult {
   speaker: "visitor" | "assistant";
   content: string;
   citations: unknown | null;
-  response_status:
-    | "answered"
-    | "insufficient"
-    | "error"
-    | null;
+  response_status: "answered" | "insufficient" | "error" | null;
   created_at: Date;
 }
 
@@ -44,17 +41,12 @@ export interface ChatExchangeResult {
 
 export class ChatDependencyUnavailableError extends Error {
   constructor() {
-    super(
-      "Knowledge service is temporarily unavailable"
-    );
-
+    super("Knowledge service is temporarily unavailable");
     this.name = "ChatDependencyUnavailableError";
   }
 }
 
-function mapChatMessage(
-  message: ChatMessageRow
-): ChatMessageResult {
+function mapChatMessage(message: ChatMessageRow): ChatMessageResult {
   return {
     id: Number(message.message_id),
     session_id: Number(message.session_id),
@@ -66,15 +58,17 @@ function mapChatMessage(
   };
 }
 
+function insufficientAnswer(languageCode: string): string {
+  return languageCode === "en"
+    ? "I do not have enough approved information to answer this question."
+    : "Tôi chưa có đủ thông tin đã được phê duyệt để trả lời câu hỏi này.";
+}
+
 export async function saveVisitorMessage(
   sessionId: number,
   content: string
 ): Promise<ChatMessageResult> {
-  const message = await createVisitorMessage(
-    sessionId,
-    content
-  );
-
+  const message = await createVisitorMessage(sessionId, content);
   return mapChatMessage(message);
 }
 
@@ -84,73 +78,38 @@ export async function createChatExchange(
   languageCode: string,
   attractionId: number | null
 ): Promise<ChatExchangeResult> {
-  // sessionId được lấy từ visitor session
-  // đã xác thực, không lấy trực tiếp từ body.
+  // sessionId must come from the authenticated Visitor Session.
+  const visitorMessage = await createVisitorMessage(sessionId, question);
 
-  const visitorMessage = await createVisitorMessage(
-    sessionId,
-    question
-  );
+  let knowledge: Awaited<ReturnType<typeof searchKnowledge>>;
 
-  let knowledge: Awaited<
-    ReturnType<typeof searchKnowledge>
-  >;
-
-  // 1. Truy xuất Knowledge đã được phê duyệt
   try {
-    knowledge = await searchKnowledge(
-      question,
-      languageCode,
-      attractionId
-    );
+    knowledge = await searchKnowledge(question, languageCode, attractionId);
   } catch (error) {
-    if (
-      error instanceof
-      KnowledgeEmbeddingUnavailableError
-    ) {
-      const errorText =
-        languageCode === "en"
-          ? "The knowledge service is temporarily unavailable. Please try again later."
-          : "Dịch vụ tra cứu kiến thức đang tạm thời không khả dụng. Vui lòng thử lại sau.";
+    if (error instanceof KnowledgeEmbeddingUnavailableError) {
+      const errorText = languageCode === "en"
+        ? "The knowledge service is temporarily unavailable. Please try again later."
+        : "Dịch vụ tra cứu kiến thức đang tạm thời không khả dụng. Vui lòng thử lại sau.";
 
-      // Ghi lịch sử khi Embedding gặp sự cố.
-      await createAssistantMessage(
-        sessionId,
-        errorText,
-        null,
-        "error"
-      );
-
-      // Controller sẽ xử lý lỗi này.
+      await createAssistantMessage(sessionId, errorText, null, "error");
       throw new ChatDependencyUnavailableError();
     }
-
     throw error;
   }
 
-  // 2. Không tìm thấy Knowledge phù hợp
-  if (knowledge.matches.length === 0) {
-    const insufficientText =
-      languageCode === "en"
-        ? "I do not have enough approved information to answer this question."
-        : "Tôi chưa có đủ thông tin đã được phê duyệt để trả lời câu hỏi này.";
-
-    const assistantMessage =
-      await createAssistantMessage(
-        sessionId,
-        insufficientText,
-        null,
-        "insufficient"
-      );
+  async function returnInsufficient(): Promise<ChatExchangeResult> {
+    const answer = insufficientAnswer(languageCode);
+    const assistantMessage = await createAssistantMessage(
+      sessionId,
+      answer,
+      null,
+      "insufficient"
+    );
 
     return {
-      visitor_message: mapChatMessage(
-        visitorMessage
-      ),
-      assistant_message: mapChatMessage(
-        assistantMessage
-      ),
-      answer: insufficientText,
+      visitor_message: mapChatMessage(visitorMessage),
+      assistant_message: mapChatMessage(assistantMessage),
+      answer,
       citations: null,
       response_status: "insufficient",
       requested_language: languageCode,
@@ -160,61 +119,66 @@ export async function createChatExchange(
     };
   }
 
-  // 3. Loại bỏ các đoạn Knowledge trùng nhau
-  
-  let answer: string;
+  if (knowledge.matches.length === 0) {
+    return returnInsufficient();
+  }
 
+  let groundedAnswer: ChatAnswerResult;
   try {
-    answer = await generateChatAnswer({
+    const generated = await generateChatAnswer({
       question,
       languageCode,
       matches: knowledge.matches,
+      grounded: true,
     });
+
+    // Backwards-compatible path for legacy/extractive mocks and callers.
+    // Real Gemini/OpenAI grounded mode returns structured metadata.
+    groundedAnswer = typeof generated === "string"
+      ? {
+          answer: generated,
+          supported: true,
+          used_chunk_ids: knowledge.matches.map(
+            (match) => match.citation.chunk_id
+          ),
+        }
+      : generated;
   } catch (error) {
-    if (
-      error instanceof ChatGenerationUnavailableError
-    ) {
-      const errorText =
-        languageCode === "en"
-          ? "The AI assistant is temporarily unavailable. Please try again later."
-          : "Trợ lý AI đang tạm thời không khả dụng. Vui lòng thử lại sau.";
+    if (error instanceof ChatGenerationUnavailableError) {
+      const errorText = languageCode === "en"
+        ? "The AI assistant is temporarily unavailable. Please try again later."
+        : "Trợ lý AI đang tạm thời không khả dụng. Vui lòng thử lại sau.";
 
-      await createAssistantMessage(
-        sessionId,
-        errorText,
-        null,
-        "error"
-      );
-
+      await createAssistantMessage(sessionId, errorText, null, "error");
       throw new ChatDependencyUnavailableError();
     }
-
     throw error;
   }
 
-  // 5. Lấy citations tương ứng
-  const citations: KnowledgeCitation[] =
-    knowledge.matches.map(
-      (match) => match.citation
-    );
+  const usedChunkIds = new Set(groundedAnswer.used_chunk_ids);
+  const citations: KnowledgeCitation[] = knowledge.matches
+    .filter((match) => usedChunkIds.has(match.citation.chunk_id))
+    .map((match) => match.citation);
 
-  // 6. Lưu câu trả lời Assistant
-  const assistantMessage =
-    await createAssistantMessage(
-      sessionId,
-      answer,
-      citations,
-      "answered"
-    );
+  if (
+    !groundedAnswer.supported ||
+    !groundedAnswer.answer.trim() ||
+    citations.length === 0
+  ) {
+    return returnInsufficient();
+  }
 
-  // 7. Trả kết quả cho API
+  const answer = groundedAnswer.answer.trim();
+  const assistantMessage = await createAssistantMessage(
+    sessionId,
+    answer,
+    citations,
+    "answered"
+  );
+
   return {
-    visitor_message: mapChatMessage(
-      visitorMessage
-    ),
-    assistant_message: mapChatMessage(
-      assistantMessage
-    ),
+    visitor_message: mapChatMessage(visitorMessage),
+    assistant_message: mapChatMessage(assistantMessage),
     answer,
     citations,
     response_status: "answered",
@@ -228,9 +192,6 @@ export async function createChatExchange(
 export async function getChatHistory(
   sessionId: number
 ): Promise<ChatMessageResult[]> {
-  const rows = await findChatMessagesBySession(
-    sessionId
-  );
-
+  const rows = await findChatMessagesBySession(sessionId);
   return rows.map(mapChatMessage);
 }

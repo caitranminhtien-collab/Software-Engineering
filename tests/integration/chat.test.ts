@@ -330,12 +330,13 @@ describe("Chat API", () => {
       );
 
       expect(
-        generateChatAnswer
-      ).toHaveBeenCalledWith({
-        question,
-        languageCode: "vi",
-        matches: knowledgeResult.matches,
-      });
+  generateChatAnswer
+).toHaveBeenCalledWith({
+  question,
+  languageCode: "vi",
+  matches: knowledgeResult.matches,
+  grounded: true,
+});
 
       expect(
         createAssistantMessage

@@ -182,11 +182,12 @@ describe("Chat Service with LLM", () => {
       .toEqual([citation]);
 
     expect(generateChatAnswer)
-      .toHaveBeenCalledWith({
-        question,
-        languageCode: "vi",
-        matches: knowledgeResult.matches,
-      });
+  .toHaveBeenCalledWith({
+    question,
+    languageCode: "vi",
+    matches: knowledgeResult.matches,
+    grounded: true,
+  });
 
     expect(createAssistantMessage)
       .toHaveBeenCalledWith(
