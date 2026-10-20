@@ -1,0 +1,33 @@
+/* Extra styles for the split entry points. Original styles.css/theme.css
+   remain unchanged to preserve the supplied user and admin designs. */
+[hidden] { display:none !important; }
+.staff-login-screen { min-height:100vh; display:grid; place-items:center; padding:34px; position:relative; z-index:2; }
+.staff-login-layout { width:min(1100px,100%); min-height:650px; display:grid; grid-template-columns:1fr 0.95fr; overflow:hidden; border-radius:34px; background:#1d1b23; border:1px solid #50465a; box-shadow:0 28px 90px #0007; }
+.staff-login-visual { position:relative; min-height:620px; overflow:hidden; }
+.staff-login-visual>img { width:100%; height:100%; position:absolute; inset:0; object-fit:cover; object-position:62% center; filter:brightness(.67); }
+.staff-login-visual::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,#0006,transparent 40%,#120e18d9); }
+.staff-login-brand { position:absolute; top:38px; left:42px; z-index:1; font-size:24px; font-weight:800; letter-spacing:3px; color:white; }
+.staff-login-brand>span { color:#edce93; }
+.staff-login-brand small { display:block; font-size:9px; letter-spacing:2.8px; font-weight:400; margin-top:8px; color:#f3e9d8; }
+.staff-login-story { position:absolute; z-index:1; bottom:48px; left:42px; right:38px; color:#fff; }
+.staff-login-story p { color:#e5c393; letter-spacing:2px; font-size:10px; font-weight:700; }
+.staff-login-story h2 { font-family:Georgia,serif; font-weight:500; font-size:clamp(28px,3.3vw,45px); line-height:1.15; margin:18px 0; }
+.staff-login-story span { color:#f1e4d4; font-size:13px; }
+.staff-login-panel { padding:64px clamp(30px,5vw,72px); display:flex; flex-direction:column; justify-content:center; color:#eee8f2; }
+.staff-back-link { align-self:flex-start; margin-bottom:51px; font-size:12px; color:#d0bddc; text-decoration:none; }
+.staff-back-link:hover { color:#fff; }
+.staff-login-panel .eyebrow { color:#d3aa7b; font-size:10px; letter-spacing:2.5px; }
+.staff-login-panel h1 { font-family:Georgia,serif; font-size:clamp(36px,3.5vw,50px); line-height:1.13; font-weight:500; margin:12px 0 18px; }
+.staff-login-panel>p:not(.eyebrow) { color:#aca7b8; line-height:1.7; font-size:12px; margin-bottom:30px; }
+.staff-login-panel form { display:flex; flex-direction:column; gap:12px; }
+.staff-login-panel label { color:#e3dbe9; font-size:12px; font-weight:650; margin-top:10px; }
+.staff-login-panel input { width:100%; border:1px solid #4b4454; border-radius:14px; background:#292530; padding:15px 16px; font:inherit; font-size:14px; color:#fff; outline:none; }
+.staff-login-panel input:focus { border-color:#ca9e71; box-shadow:0 0 0 3px #ca9e712a; }
+.staff-login-panel input::placeholder { color:#837c8e; }
+.staff-login-error { min-height:17px; font-size:12px; color:#ffd0bd; margin:0; line-height:1.5; }
+.staff-login-submit { display:flex; justify-content:space-between; align-items:center; background:#d9ae7c; color:#201b1d; padding:17px 19px; font-weight:700; border-radius:14px; margin-top:3px; font-size:13px; cursor:pointer; }
+.staff-login-submit:hover { background:#edc89b; }
+.staff-login-submit:disabled { opacity:.6; cursor:wait; }
+.staff-login-note { border-top:1px solid #423c49; margin-top:39px; padding-top:22px; font-size:11px; line-height:1.8; color:#a69ead; }
+.staff-login-note b { color:#dbc0a4; font-weight:600; }
+@media(max-width:760px) { .staff-login-screen { padding:13px; } .staff-login-layout { display:block; } .staff-login-visual { min-height:260px; } .staff-login-brand { top:22px; left:25px; font-size:20px; } .staff-login-story { left:25px; bottom:20px; } .staff-login-story h2 { font-size:27px; margin:8px 0; } .staff-login-story span { font-size:11px; } .staff-login-panel { padding:30px 26px 40px; } .staff-back-link { margin-bottom:26px; } .staff-login-note { margin-top:24px; } }

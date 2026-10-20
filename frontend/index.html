@@ -1,13 +1,6 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#e9d5b6"><meta name="description" content="Hue Guide — Khám phá di sản Huế qua bản đồ, tuyến tham quan và thuyết minh."><title>Hue Guide — Khám phá di sản</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="theme.css"><link rel="preload" as="image" href="assets/cloud-transition.png"></head>
+<body data-area="user"><section id="opening-screen" class="opening-screen" role="dialog" aria-modal="true" aria-label="Chào mừng đến với Hue Guide" hidden><div class="opening-backdrop" aria-hidden="true"></div><img id="opening-image" class="opening-image" src="assets/hue-opening.png" alt="Ảnh Đại Nội Huế nhìn từ trên cao, với chữ Đại Nội Huế ở giữa" fetchpriority="high"><div class="opening-top"><span class="opening-brand">HUE <b>GUIDE</b><small>KHÁM PHÁ CỐ ĐÔ</small></span><button id="skip-opening" type="button">Bỏ qua <span aria-hidden="true">→</span></button></div><div class="opening-caption"><p>MỘT MIỀN DI SẢN · MỘT HÀNH TRÌNH</p><span>Chào mừng bạn đến với Huế</span><i aria-hidden="true"></i></div></section><div class="ambient orb-one"></div><div class="ambient orb-two"></div><div class="app-shell">
+<aside class="sidebar"><a class="brand" href="index.html#home" aria-label="Hue Guide trang chủ"><span class="brand-mark">h<span>g</span></span><span>HUE<span class="brand-light">GUIDE</span></span></a><span class="nav-caption">KHÁM PHÁ CỐ ĐÔ</span><nav id="nav"></nav><div class="sidebar-bottom"><a class="nav-button" href="admin.html" id="staff-link" aria-label="Đăng nhập khu vực Admin"></a><div class="profile"><div class="avatar">K</div><div><strong>Khách tham quan</strong><small>Hành trình của bạn</small></div></div></div></aside>
+<main class="workspace"><header class="topbar"><button class="icon-button mobile-menu" id="menu-toggle" aria-label="Mở trình đơn"></button><div class="breadcrumb">Hue Guide <span>/</span> <b id="breadcrumb">Tổng quan</b></div><div class="top-actions"><div class="global-search"><span id="search-icon"></span><input id="global-search" placeholder="Tìm một câu chuyện, một di tích…" aria-label="Tìm di tích"><kbd>↵</kbd></div><button class="icon-button" data-page="popular" id="top-popular" aria-label="Được tham quan nhiều nhất"></button></div></header><section id="content" tabindex="-1"></section><footer class="site-footer"><span>Huế, một miền di sản.</span><span>Giao diện tương tác · Nội dung minh họa</span></footer></main></div>
+<div id="cloud-transition" class="cloud-transition" aria-hidden="true" hidden><div class="cloud-curtain cloud-left"></div><div class="cloud-curtain cloud-right"></div><div class="cloud-caption"><span>HUE GUIDE</span><strong id="cloud-destination"></strong><i></i></div></div><div id="modal" class="modal-overlay" hidden></div><div id="toast" role="status" aria-live="polite"></div><div id="audio-dock" hidden></div><script src="app.js"></script></body></html>

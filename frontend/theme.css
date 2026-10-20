@@ -1,0 +1,164 @@
+/* Shared palette sampled from the cloud transition: rice paper, sandstone, walnut. */
+:root{--ink:#493321;--muted:#796049;--line:#e8d7bd;--glass:#fff7e9d9;--soft:#f6ead3aa;--paper:#fcf4e5;--sand:#dcc09a;--accent:#946536;--deep:#533a27;--radius:25px;color-scheme:light}
+body,body.admin-mode{background:#e9d5b6;background-image:linear-gradient(110deg,#f5ead7ed,#e4c9a5e8),url('assets/cloud-transition.png');background-size:cover;background-position:center;background-attachment:fixed;color:var(--ink)}
+body .app-shell,body.admin-mode .app-shell{background:#f9eedc75;border-color:#fff8e4b8;box-shadow:0 22px 70px #57381d14}
+body .ambient,body.admin-mode .ambient{background:radial-gradient(circle at 30% 30%,#fff4d9,#e2c79e 55%,#bb966a 85%);box-shadow:20px 35px 45px #b38a5d30;opacity:.65}
+body .sidebar,body.admin-mode .sidebar{background:#fff7e8d9;border:1px solid #f8e8ca;border-radius:27px;box-shadow:0 6px 25px #704c2310}
+body .brand-mark,body.admin-mode .brand-mark{background:#67462b;color:#fff7e7}
+body .nav-button,body.admin-mode .nav-button{color:#74583e}
+body .nav-button.active,body.admin-mode .nav-button.active{background:#694a2e;color:#fff5de;box-shadow:0 5px 13px #6e4c271c}
+body .nav-button:hover,body.admin-mode .nav-button:hover{background:#ecd9bdaa}
+body .nav-button.active:hover,body.admin-mode .nav-button.active:hover{background:#795434}
+body .profile,body.admin-mode .profile{border-color:#d3b99270}
+body .avatar,body.admin-mode .avatar{background:#e7cfab;color:#68492b}
+body .profile small,body.admin-mode .profile small,body .nav-caption{color:#85694c}
+body .global-search,body.admin-mode .global-search{background:#fff9edc9;border:1px solid #dec6a4}
+body input,body select,body textarea,body.admin-mode input,body.admin-mode select,body.admin-mode textarea{color:#493321;accent-color:#946536}
+body input::placeholder,body textarea::placeholder{color:#91765b}
+body .breadcrumb,body .breadcrumb b,body.admin-mode .breadcrumb,body.admin-mode .breadcrumb b{color:#7c5d41}
+body .icon-button,body.admin-mode .icon-button{background:#f9eedadb;border-color:#dec6a3;color:#785334}
+body .icon-button.dark{background:#65472d;color:#fff7e5;border-color:#65472d}
+body .glass,body.admin-mode .glass,body .dashboard-grid>.glass{background:linear-gradient(135deg,#fff9edeb,#f5e6cddd);border-color:#ead5b6;box-shadow:inset 0 1px 0 #fff9,0 7px 22px #68441b09}
+body .page-heading h1,body.admin-mode .page-heading h1{color:#493321}
+body .page-heading p,body.admin-mode .page-heading p,body .eyebrow,body.admin-mode .eyebrow{color:#816345}
+body .button,body.admin-mode .button{background:#76512e;border-color:#76512e;color:#fff9ec;box-shadow:0 3px 10px #63401910}
+body .button.light,body.admin-mode .button.light{background:#fff5de;border-color:#fff3d9;color:#634426}
+body .button.outline,body.admin-mode .button.outline{background:#fff9ee55;border-color:#c8a77c;color:#775333;box-shadow:none}
+body .text-button,body.admin-mode .text-button,body.admin-mode .table-wrap .text-button{color:#80562f}
+body button:focus-visible,body a:focus-visible{outline-color:#8c5d29}
+body .date-pill,body .subtle-pill,body .filter,body.admin-mode .filter{background:#fff6e7aa;border-color:#d9bc93;color:#785637}
+body .filter.active,body.admin-mode .filter.active{background:#7e5936;color:#fff6e3;border-color:#7e5936}
+body .local-search,body .admin-search,body.admin-mode .admin-search{background:#fff8ebc9;border-color:#d4b38a;color:#523920}
+body .category-intro,body .category-choice small,body .category-count,body .category-choice>svg,body .popular-list-header,body .popular-preview-row>span{color:#896746}
+body .category-choice{background:#fff9eeaa;border-color:#e4cfad}
+body .category-choice:hover{background:#fffaf0}
+body .category-icon{background:#977047;color:#fff9e8}
+body .category-count{background:#efdfc4}
+body .popular-preview-row{border-color:#cdb28c45}
+body .popular-preview-row>svg{color:#94704b}
+body .popular-notice{background:#fff5e1b8;border-color:#dec5a0}
+body .popular-notice p,body .popular-visits span{color:#7b5d40}
+body .sample-label{color:#835f37;border-color:#c6a477;background:#efdfc477}
+body .popular-rank{background:#fbefda;border-color:#fff8e7;color:#7a542c}
+body .popular-rank.top-rank{background:#7c5732;border-color:#bd9766;color:#fff9e9}
+body .popular-visits svg{color:#946a3e}
+body .popularity-meter{background:#e6cfaa}
+body .popularity-meter>i{background:linear-gradient(90deg,#ac804e,#705035)}
+body .attraction-card{background:#fcf3e2d6;border-color:#e3cba6}
+body .attraction-card:hover{background:#fff7e8}
+body .attraction-copy small,body .attraction-copy p{color:#7c6144}
+body .attraction-image img{filter:sepia(.2) saturate(.8)}
+body .abstract-thumb{color:#977450;background:radial-gradient(ellipse at var(--shift,30%) 0%,#fff4dd,#e4cfad 68%,#c7a578)}
+body .abstract-thumb>span{color:#fff7e1b8}
+body .weather-now,body .weather-page>.weather-now{background:radial-gradient(ellipse at 95% 5%,#fff8e7,#e9d4b2cc 70%)!important}
+body .weather-now p,body .weather-now .text-button,body .weather-source,body .weather-metrics,body .forecast-detail p,body .forecast-detail span{color:#7d5e3e}
+body .weather-orb{background:#fff5dda8;color:#a8793e}
+body .forecast-day{background:#fff7e766;color:#6e4e30}
+body .forecast-day:hover{background:#fff9eab5}
+body .forecast-day.selected{background:#80603a;color:#fff9e8;box-shadow:0 5px 15px #8a60261c}
+body .forecast-detail{border-color:#dec39b80}
+body .weather-metrics b{color:#634224}
+body .weather-warning{border-color:#b9905c;background:#f3e1c3;color:#76522d}
+body .dash-route{background:linear-gradient(145deg,#98754e,#65482f)!important;color:#fff7e5}
+body .dash-route>p,body .dash-route small{color:#f3dfc0}
+body .dash-route .text-button{color:#fff8e9}
+body .dash-route>.button{background:#fcecd0;color:#654529;border-color:#fcecd0}
+body .dash-listen p,body .muted-copy,body .site-footer,body.admin-mode .site-footer{color:#87694b}
+body .outline-row{border-color:#b99a7399;background:#fff8e738}
+body .audio-feature,body .audio-card,body .quote-card{background:linear-gradient(145deg,#84613e,#493423);color:#fff4de}
+body .audio-art{background:radial-gradient(circle at 30% 25%,#f2d7a6,#ac8452 40%,#59402a 80%);border-color:#f5ddb747;box-shadow:inset -15px -20px 30px #422a1977,0 0 0 8px #f5d7a10a,0 0 0 19px #f5d7a109}
+body .audio-feature .eyebrow,body .audio-caption,body .audio-time,body .time-row,body .audio-language-label{color:#eed7b5}
+body .audio-feature select{background:#ffffff12;color:#fff6e2;border-color:#d4b17b77}
+body .audio-feature select option{background:#fff5e2;color:#634426}
+body .transport button{color:#fff4dc}
+body .transport .play-main{background:#f9e8c5;color:#664328}
+body .progress-track{background:#e8c38a33}
+body .progress-track>span{background:#edd2a2}
+body .transcript p,body .notice{color:#7a5b3c}
+body .notice,body.admin-mode .notice{background:#edddc2;border-color:#d5b98f;color:#755737}
+body .track{background:#fff4e0a6;border-color:#d9bc95;color:#765331}
+body .track.active{background:#e6cfab;border-color:#bb935f;color:#533820}
+body .track small{color:#85613d}
+body .route-choice{background:#fff5e2a6;border-color:#d6b98d;color:#5e4227}
+body .route-choice.active{background:#765333;color:#fff6e3;border-color:#765333}
+body .route-choice p{color:#997856}
+body .route-choice.active p{color:#edd5b4}
+body .step-circle{border-color:#bf9968;color:#8b653b}
+body .step.current .step-circle,body .step.done .step-circle{background:#8e663b;color:#fff4de}
+body .schematic{background:#e9dec8;border-color:#f9edd5}
+body .map-info,body .map-caption{background:#fff7e7ed;border-color:#e0c9a4}
+body .map-info p,body .gps-info{color:#81603f}
+body .map-poi{border-color:#d3b99266}
+body .map-poi .pin-number{border-color:#c6a477}
+body .map-poi.active .pin-number,body .map-marker.active{background:#795331;color:#fff4de}
+body .map-marker{background:#fff1d6;border-color:#b68b59}
+body .chat-panel{background:#f7ead5aa;border-color:#e2cba7}
+body .chat-header{border-color:#d2b78d55}
+body .chat-header .avatar{background:#7f5936;color:#fff0d6}
+body .chat-header small,body .chat-welcome p{color:#876749}
+body .message{background:#fff8e8e0;color:#5b4028}
+body .message.user{background:#7c5736;color:#fff4dd}
+body .message .source{border-color:#ceb08766;color:#846343}
+body .chat-form{background:#fff6e6;border-color:#dec29b}
+body .modal-overlay,body.admin-mode .modal-overlay{background:#37281780}
+body .modal,body.admin-mode .modal{background:#fcf1de;border-color:#fff7e3;color:#553b23}
+body .modal p,body.admin-mode .modal p{color:#795b3d}
+body .modal input,body .modal textarea,body.admin-mode .modal input,body.admin-mode .modal textarea{background:#fff8e9;border-color:#ceb085;color:#5c3e24}
+body .modal .source-info,body.admin-mode .modal .source-info{border-color:#d8be97}
+body .modal-close,body.admin-mode .modal-close{background:#f1dfc2;color:#765330}
+body #toast,body.admin-mode #toast,body #audio-dock{background:#68482d;color:#fff3da;border-color:#b79060}
+body #audio-dock button{background:#946c43;color:#fff7e6}
+body .empty{color:#896b4c}body .empty h2{color:#644528}
+/* Admin shares the same parchment canvas and brass accents. */
+body.admin-mode .admin-card{background:linear-gradient(145deg,#fff8e8,#f0dfc3);border-color:#d7b88d;box-shadow:0 7px 20px #7750220b}
+body.admin-mode .admin-card h2,body.admin-mode .admin-card h2 svg{color:#69482b}
+body.admin-mode .admin-muted,body.admin-mode .admin-card .card-top>span,body.admin-mode .admin-controls label{color:#795936}
+body.admin-mode .admin-controls select{background:#fff5e2;color:#6e4b2d;border-color:#c8a477}
+body.admin-mode .admin-data-note{background:#f6e8cc;border-color:#d2b07c;color:#7b5732}
+body.admin-mode .admin-mode-badge{background:#e8cf9f;border-color:#c7a16c;color:#68451f}
+body.admin-mode .admin-spotlight{background:linear-gradient(130deg,#f8e9ca,#e2c292);border-color:#b58a51;box-shadow:inset 0 0 7px #fff2c8,0 0 9px #b48b4d22}
+body.admin-mode .admin-spotlight h2{background:linear-gradient(90deg,#81522b,#a36c31,#704326);background-clip:text;-webkit-background-clip:text;color:transparent}
+body.admin-mode .admin-spotlight p{color:#85633e}
+body.admin-mode .admin-spotlight .eyebrow{color:#947044}
+body.admin-mode .admin-ribbon i{background:linear-gradient(130deg,#fff6d0 3%,#ebc583 24%,#ce9659 48%,#a86a3f 72%,#794c2e 95%);box-shadow:inset 5px 3px 5px #fff1c3,5px 4px 4px #86552a44}
+body.admin-mode .admin-agenda{background:linear-gradient(140deg,#f5e5c6,#e8d0a8)}
+body.admin-mode .admin-today{border-color:#b58c5c33}
+body.admin-mode .admin-today>span,body.admin-mode .admin-no-tasks,body.admin-mode .admin-task small{color:#7e5b37}
+body.admin-mode .admin-task{border-color:#b58c5c33}
+body.admin-mode .admin-task>button:first-child{background:#dfc49b;border-color:#bc925f;color:#79512c}
+body.admin-mode .heatmap-grid>div{background:rgba(161,111,54,calc(var(--intensity)*.55));border-color:#a5773e44;color:#50351e}
+body.admin-mode .heatmap-grid small{color:#593b20;opacity:1}
+body.admin-mode .admin-rank>span{color:#9b6e3c}
+body.admin-mode .admin-bar{background:#e0c79e}
+body.admin-mode .admin-bar>i{background:linear-gradient(90deg,#bf965e,#80552f)}
+body.admin-mode .language-donut{background:conic-gradient(#9a6c36 var(--split),#e2c696 0)}
+body.admin-mode .language-donut>div{background:#fbefd9}
+body.admin-mode .language-donut small{color:#8c673e}
+body.admin-mode .language-legend i{background:#9a6c36}
+body.admin-mode .language-legend span:last-child i{background:#e2c696}
+body.admin-mode .report-facts p{color:#805e3e;border-color:#b9956755}
+body.admin-mode .report-facts b{color:#5f3e20}
+body.admin-mode td,body.admin-mode th{border-color:#d1b58b77}
+body.admin-mode th{color:#89653f}
+body.admin-mode .status{background:#f0dfbc;border-color:#c4a272;color:#7c572e}
+body .promo-slide:after{background:linear-gradient(180deg,#33261522,#402d1a77 30%,#342212ed 85%)}
+body .promo-slide.stories:after{background:linear-gradient(180deg,#59412722,#51371f88 35%,#392613ee 85%)}
+body .promo-slide.journey:after{background:linear-gradient(180deg,#44311622,#513f2899 35%,#332311ee 85%)}
+body .promo-pause,body .promo-arrow{background:#6c4a2d66;border-color:#efd7ac80;color:#fff7e6}
+body .promo-badge{background:#62452a44;border-color:#e9d4ac66;color:#fff7e7}
+body .promo-copy>.eyebrow,body .promo-copy p{color:#f5e7cd}
+body .opening-screen{background:#483723}
+body .opening-backdrop{background:linear-gradient(#5c442d55,#5c442d88),url('assets/hue-opening.png') center/cover}
+body .opening-top button{background:#654b2d66;border-color:#f5e5c580}
+@media(max-width:650px){body .sidebar,body.admin-mode .sidebar{background:#fcf1de;box-shadow:15px 0 40px #6a492233}body .global-search:focus-within,body.admin-mode .global-search:focus-within{background:#fff8e9}}
+/* Route selection: explicit foreground colors for both card states. */
+body .route-choice .tag{color:#73502f;border-color:#b38b5b;background:#fff5e455}
+body .route-choice h2{color:#56391f}
+body .route-choice p{color:#795737}
+body .route-choice.active h2{color:#fff7e6}
+body .route-choice.active p{color:#f3dec0}
+body .route-choice.active .tag{color:#fff7e6;border-color:#e6c391;background:#ffffff0a}
+body .route-detail>h2,body .step h3{color:#51361f}
+body .route-detail>p:not(.eyebrow),body .step p{color:#795737}
+body .route-detail .eyebrow{color:#805930}
+body .step .text-button{color:#805126}
