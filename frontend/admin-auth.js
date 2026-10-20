@@ -49,13 +49,21 @@
     }
     if (!appLoaded) {
       appLoaded = true;
-      const script = document.createElement('script');
-      script.src = 'app.js';
-      script.onerror = () => {
+      const failToLoad = () => {
         appLoaded = false;
         showLogin('Không thể tải giao diện quản trị. Hãy tải lại trang.');
       };
-      document.body.appendChild(script);
+      // Load the server-backed Admin editor before app.js renders its content tab.
+      const crudScript = document.createElement('script');
+      crudScript.src = 'hue-admin-crud.js';
+      crudScript.onerror = failToLoad;
+      crudScript.onload = () => {
+        const script = document.createElement('script');
+        script.src = 'app.js';
+        script.onerror = failToLoad;
+        document.body.appendChild(script);
+      };
+      document.body.appendChild(crudScript);
     }
   }
 

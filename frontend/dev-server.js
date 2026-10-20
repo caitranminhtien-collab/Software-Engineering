@@ -1,4 +1,4 @@
-/* Development-only static server with same-origin reverse proxy to the
+﻿/* Development-only static server with same-origin reverse proxy to the
    EXISTING Hue Tourism Guide backend. No dependencies or CORS changes.
    Do not expose this development server publicly. */
 'use strict';
@@ -11,7 +11,7 @@ const API_HOST = '127.0.0.1';
 const API_PORT = 3000;
 const root = __dirname;
 const mime = { '.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon' };
-const allowedFiles = new Set(['index.html','admin.html','app.js','admin-auth.js','styles.css','theme.css','split.css']);
+const allowedFiles = new Set(['index.html','admin.html','app.js','admin-auth.js','hue-admin-crud.js','styles.css','theme.css','split.css','hue-map.css','hue-map.js','hue-chat-api.js']);
 
 http.createServer((req,res)=>{
   let pathname;
@@ -27,7 +27,7 @@ http.createServer((req,res)=>{
       upstream.pipe(res);
     });
     proxy.on('timeout',()=>proxy.destroy(new Error('Backend timeout')));
-    proxy.on('error',()=>{ if(!res.headersSent)res.writeHead(502,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:{code:'BACKEND_UNAVAILABLE',message:'Backend chưa chạy tại localhost:3000'}})); });
+    proxy.on('error',()=>{ if(!res.headersSent)res.writeHead(502,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:{code:'BACKEND_UNAVAILABLE',message:'Backend chÆ°a cháº¡y táº¡i localhost:3000'}})); });
     req.pipe(proxy);
     return;
   }
@@ -46,3 +46,4 @@ http.createServer((req,res)=>{
   console.log(`Hue Guide Admin: http://localhost:${PORT}/admin.html`);
   console.log(`Backend proxy:  http://localhost:${API_PORT}/api/v1`);
 });
+
