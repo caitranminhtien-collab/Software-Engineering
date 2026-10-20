@@ -1,4 +1,5 @@
 import {
+  findAllStaffKnowledgeDocuments,
   createDraftKnowledgeDocument,
   findStaffKnowledgeDocumentById,
   replaceKnowledgeChunksAtomically,
@@ -371,5 +372,71 @@ export async function reindexStaffKnowledgeDocument(
 
     embedding_model:
       embeddingResult.modelKey,
+  };
+}
+
+export type StaffKnowledgeSummaryResult =
+  Omit<StaffKnowledgeResult, "body_text">;
+
+function mapStaffKnowledgeSummary(
+  document: {
+    document_id: string;
+    attraction_id: string | null;
+    title: string;
+    language_code: string;
+    source_url: string | null;
+    source_credit: string;
+    version: number;
+    status: string;
+    created_by: string;
+    approved_by: string | null;
+    approved_at: Date | null;
+  }
+): StaffKnowledgeSummaryResult {
+  return {
+    id: Number(document.document_id),
+    attraction_id:
+      document.attraction_id === null
+        ? null
+        : Number(document.attraction_id),
+    title: document.title,
+    language_code: document.language_code,
+    source_url: document.source_url,
+    source_credit: document.source_credit,
+    version: Number(document.version),
+    status: document.status,
+    created_by: Number(document.created_by),
+    approved_by:
+      document.approved_by === null
+        ? null
+        : Number(document.approved_by),
+    approved_at: document.approved_at,
+  };
+}
+
+export async function listStaffKnowledgeDocuments(): Promise<
+  StaffKnowledgeSummaryResult[]
+> {
+  const documents =
+    await findAllStaffKnowledgeDocuments();
+
+  return documents.map(mapStaffKnowledgeSummary);
+}
+
+export async function getStaffKnowledgeDocument(
+  documentId: number
+): Promise<StaffKnowledgeResult> {
+  const document =
+    await findStaffKnowledgeDocumentById(
+      documentId
+    );
+
+  if (!document) {
+    throw new StaffKnowledgeDocumentNotFoundError();
+  }
+
+  return {
+    ...mapStaffKnowledgeSummary(document),
+    body_text: document.body_text,
   };
 }

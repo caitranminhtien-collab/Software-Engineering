@@ -277,3 +277,44 @@ export async function replaceKnowledgeChunksAtomically(
     client.release();
   }
 }
+
+export interface StaffKnowledgeListRow
+  extends QueryResultRow {
+  document_id: string;
+  attraction_id: string | null;
+  title: string;
+  language_code: string;
+  source_url: string | null;
+  source_credit: string;
+  version: number;
+  status: StaffKnowledgeDocumentRow["status"];
+  created_by: string;
+  approved_by: string | null;
+  approved_at: Date | null;
+}
+
+export async function findAllStaffKnowledgeDocuments(): Promise<
+  StaffKnowledgeListRow[]
+> {
+  const result =
+    await db.query<StaffKnowledgeListRow>(
+      `
+        SELECT
+          document_id,
+          attraction_id,
+          title,
+          language_code,
+          source_url,
+          source_credit,
+          version,
+          status,
+          created_by,
+          approved_by,
+          approved_at
+        FROM knowledge_documents
+        ORDER BY document_id DESC
+      `
+    );
+
+  return result.rows;
+}

@@ -33,6 +33,13 @@ import staffAccountRoutes from "./routes/staff-account.routes";
 
 const app = express();
 
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.TRUST_PROXY === "1"
+) {
+  app.set("trust proxy", 1);
+}
+
 app.use(express.json());
 
 app.use(

@@ -10,6 +10,8 @@ import {
   StaffKnowledgeDocumentNotFoundError,
   StaffKnowledgeEmbeddingUnavailableError,
   StaffKnowledgeReindexConflictError,
+  getStaffKnowledgeDocument,
+  listStaffKnowledgeDocuments,
 } from "../services/staff-knowledge.service";
 
 import type {
@@ -162,6 +164,75 @@ export async function reindexStaffKnowledgeController(
           "INTERNAL_SERVER_ERROR",
         message:
           "Unable to reindex knowledge document",
+      },
+    });
+  }
+}
+
+export async function listStaffKnowledgeController(
+  _req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const documents =
+      await listStaffKnowledgeDocuments();
+
+    res.status(200).json({
+      data: documents,
+    });
+  } catch (error) {
+    console.error(
+      "List staff knowledge failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unable to list knowledge documents",
+      },
+    });
+  }
+}
+
+export async function getStaffKnowledgeController(
+  _req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const { documentId } =
+      res.locals
+        .staffKnowledgeParams as StaffKnowledgeParams;
+
+    const document =
+      await getStaffKnowledgeDocument(documentId);
+
+    res.status(200).json({
+      data: document,
+    });
+  } catch (error) {
+    if (
+      error instanceof
+      StaffKnowledgeDocumentNotFoundError
+    ) {
+      res.status(404).json({
+        error: {
+          code: "KNOWLEDGE_DOCUMENT_NOT_FOUND",
+          message: "Knowledge document not found",
+        },
+      });
+      return;
+    }
+
+    console.error(
+      "Get staff knowledge failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unable to get knowledge document",
       },
     });
   }

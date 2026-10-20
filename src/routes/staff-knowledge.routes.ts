@@ -3,6 +3,8 @@ import {
 } from "express";
 
 import {
+  getStaffKnowledgeController,
+  listStaffKnowledgeController,
   createStaffKnowledgeController,
   reindexStaffKnowledgeController,
 } from "../controllers/staff-knowledge.controller";
@@ -25,6 +27,31 @@ import {
 } from "../validators/staff-knowledge.validator";
 
 const router = Router();
+
+
+router.get(
+  "/",
+  requireStaffSession,
+  requireStaffRole(
+    "editor",
+    "reviewer",
+    "admin"
+  ),
+  listStaffKnowledgeController
+);
+
+router.get(
+  "/:id",
+  requireStaffSession,
+  requireStaffRole(
+    "editor",
+    "reviewer",
+    "admin"
+  ),
+  validateStaffKnowledgeParams,
+  getStaffKnowledgeController
+);
+
 
 router.post(
   "/",
