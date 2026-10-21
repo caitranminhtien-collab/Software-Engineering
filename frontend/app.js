@@ -46,6 +46,68 @@ async function fetchJson(path) {
   return response.json();
 }
 
+
+const publicRouteApi = {
+  status: "loading",
+  items: [],
+  message: ""
+};
+
+async function loadPublishedRoutesFromBackend() {
+  try {
+    const allRoutes = [];
+
+    for (let page = 1; page <= 100; page++) {
+      const payload = await fetchJson(
+        `/api/v1/routes?page=${page}&page_size=100`
+      );
+
+      if (!Array.isArray(payload.data)) {
+        throw new Error("Invalid routes API response");
+      }
+
+      allRoutes.push(...payload.data);
+
+      const totalPages = Number(
+        payload.pagination?.total_pages ?? 1
+      );
+
+      if (
+        !Number.isInteger(totalPages) ||
+        totalPages < 0 ||
+        totalPages > 100
+      ) {
+        throw new Error("Invalid routes pagination");
+      }
+
+      if (page >= totalPages) break;
+    }
+
+    publicRouteApi.items = allRoutes;
+    publicRouteApi.status = "ready";
+    publicRouteApi.message = allRoutes.length
+      ? ""
+      : "Hiện chưa có tuyến tham quan được xuất bản.";
+
+    console.info(
+      "[Routes API] Số tuyến published:",
+      allRoutes.length
+    );
+  } catch (error) {
+    publicRouteApi.status = "error";
+    publicRouteApi.message =
+      "Không thể tải tuyến tham quan từ Backend.";
+
+    console.error("[Routes API]", error);
+  }
+  finally {
+  if (!IS_ADMIN && state.page === "routes") {
+    render();
+  }
+}
+}
+
+
 async function loadAttractionsFromBackend() {
   try {
     const records = [];
@@ -257,7 +319,70 @@ function renderMap(){
   <div class="map-switch-row"><a class="text-button" id="hue-open-osm" href="${osmHref}" target="_blank" rel="noopener noreferrer">${icon('map')} Mở vị trí trên OpenStreetMap</a><span class="gps-info">${state.location?'Có vị trí hiện tại · Không lưu lịch sử GPS':'Tọa độ chỉ mang tính tham khảo, không dùng làm chỉ dẫn cổng vào.'}</span></div>
   </div></div>`;
 }
-function renderRoutes(){const r=routes.find(r=>r.id===state.routeId)||routes[0];const active=state.activeRoute?.id===r.id;return `${header('Chọn một hành trình.','Những gợi ý để bắt đầu. Bạn quyết định nhịp điệu của mình.')}<div class="route-page"><div class="route-choices">${routes.map((r,i)=>`<button class="glass route-choice ${r.id===state.routeId?'active':''}" data-select-route="${r.id}"><span class="tag">${r.stops.length} điểm dừng · Tuyến mẫu</span><h2>${r.name}</h2><p>${r.subtitle}</p></button>`).join('')}</div><article class="glass route-detail"><p class="eyebrow">HÀNH TRÌNH ĐƯỢC CHỌN</p><h2>${r.name}</h2><p>${r.subtitle}</p><div class="steps">${r.stops.map((id,i)=>{const p=byId(id);return `<div class="step ${active&&state.activeRoute.step===i?'current':''}"><span class="step-circle">${active&&i<state.activeRoute.step?icon('check'):i+1}</span><div><h3>${p.name}</h3><p>${p.type}${active&&state.activeRoute.step===i?' · Điểm dừng hiện tại':''}</p><button class="text-button" data-detail="${p.id}">Xem nội dung ${icon('arrow')}</button></div></div>`}).join('')}</div><div class="modal-actions"><button class="button" id="start-route" data-id="${r.id}">${icon(active?'check':'route')} ${active?'Đang theo tuyến':'Bắt đầu tuyến này'}</button>${active?`<button class="button outline" id="next-stop">${state.activeRoute.step===r.stops.length-1?'Hoàn thành tuyến':'Điểm tiếp theo'} ${icon('arrow')}</button>`:''}</div><div class="notice">Tuyến đang chọn chỉ dùng để theo dõi trải nghiệm. Thứ tự, lộ trình và thời gian di chuyển cần được xác minh thực địa; không bao gồm vé tham quan.</div></article></div>`}
+
+function renderRoutes() {
+  const heading = header(
+    "Chọn một hành trình.",
+    "Khám phá những tuyến tham quan đã được xuất bản tại Huế."
+  );
+
+  if (publicRouteApi.status === "loading") {
+    return `${heading}
+      <article class="glass route-detail">
+        <h2>Đang tải tuyến tham quan...</h2>
+        <p>Hệ thống đang kết nối Backend.</p>
+      </article>`;
+  }
+
+  if (publicRouteApi.status === "error") {
+    return `${heading}
+      <article class="glass route-detail">
+        <h2>Không thể tải tuyến tham quan</h2>
+        <p>${esc(publicRouteApi.message)}</p>
+      </article>`;
+  }
+
+  if (publicRouteApi.items.length === 0) {
+    return `${heading}
+      <article class="glass route-detail">
+        <p class="eyebrow">TUYẾN THAM QUAN</p>
+        <h2>Chưa có tuyến được xuất bản</h2>
+        <p>
+          Các tuyến tham quan hiện đang được biên tập
+          và xác minh trước khi công khai.
+        </p>
+        <div class="notice">
+          Hệ thống chỉ hiển thị tuyến tham quan đã được
+          phê duyệt và xuất bản từ PostgreSQL.
+        </div>
+      </article>`;
+  }
+
+  return `${heading}
+    <div class="route-page">
+      <div class="route-choices">
+        ${publicRouteApi.items.map(route => `
+          <article class="glass route-choice">
+            <span class="tag">
+              ${Number(route.estimated_minutes)} phút dự kiến
+            </span>
+            <h2>${esc(route.name)}</h2>
+            <p>${esc(route.description)}</p>
+          </article>
+        `).join("")}
+      </div>
+
+      <article class="glass route-detail">
+        <h2>Tuyến tham quan đã xuất bản</h2>
+        <p>
+          Danh sách được tải trực tiếp từ Backend.
+          Chi tiết điểm dừng và chỉ đường ô tô
+          sẽ được tích hợp ở bước tiếp theo.
+        </p>
+      </article>
+    </div>`;
+}
+
 function renderAudio(){const p=byId(state.trackId);return `${header('Lắng nghe câu chuyện Huế.','Bấm phát để nghe bản đọc thử. Âm thanh luôn do bạn chủ động điều khiển.')}<div class="audio-layout"><section class="audio-feature ${state.playing&&!state.paused?'playing':''}"><div class="section-line"><span>${icon('headphones')} THUYẾT MINH</span><label class="audio-language-label" for="audio-language">Ngôn ngữ thuyết minh<select id="audio-language" aria-label="Ngôn ngữ thuyết minh"><option value="vi-VN" ${state.audioLanguage==='vi-VN'?'selected':''}>Tiếng Việt</option><option value="en-US" ${state.audioLanguage==='en-US'?'selected':''}>English</option></select></label></div><div class="audio-art">${icon('building')}</div><h2>${p.name}</h2><p id="play-status">${state.playing?(state.paused?'Đã tạm dừng':'Đang đọc nội dung'):'Sẵn sàng lắng nghe'}</p><div class="transport"><button id="audio-restart" aria-label="Đọc lại từ đầu">${icon('route')}</button><button class="play-main" data-play aria-label="Phát hoặc tạm dừng">${icon(state.playing&&!state.paused?'pause':'play')}</button><button id="audio-stop" aria-label="Dừng thuyết minh">${icon('stop')}</button></div><div class="progress-track"><span id="audio-progress" style="--progress:${state.progress}%"></span></div><div class="time-row"><span id="audio-elapsed">${formatTime(state.elapsed)}</span><span>Giọng đọc của trình duyệt</span></div></section><div><article class="glass transcript"><div class="card-top"><h2>Nội dung thuyết minh</h2>${icon('book')}</div><p>${state.audioLanguage==='vi-VN'?p.text:p.en}</p><button class="text-button" data-detail="${p.id}">Thông tin di tích ${icon('arrow')}</button><div class="notice">Bản đọc mẫu dùng chức năng chuyển văn bản thành giọng nói của trình duyệt. Giọng đọc phụ thuộc thiết bị. Không phải tệp thuyết minh chính thức.</div></article><div class="audio-library">${places.slice(0,6).map(p=>`<button class="track ${p.id===state.trackId?'active':''}" data-track="${p.id}">${icon('headphones')}<span><strong>${p.name}</strong><small>Bản thuyết minh mẫu</small></span></button>`).join('')}</div></div></div>`}
 function renderChat(){return `${header('Bạn hỏi, di sản trả lời.','Hỏi đáp bằng Gemini dựa trên tài liệu Knowledge đã được phê duyệt.')}<div class="chat-layout"><aside class="glass chat-sidebar"><h2>Bắt đầu một câu chuyện</h2>${['Đại Nội Huế có gì đặc biệt?','Lăng Tự Đức có lịch sử như thế nào?','Đàn Nam Giao có ý nghĩa gì?','Hãy giới thiệu Cung An Định'].map(v=>`<button class="chat-topic" data-question="${esc(v)}">${esc(v)}</button>`).join('')}<button class="text-button" id="clear-chat">${icon('trash')} Hội thoại mới</button><div class="notice">Chatbot kết nối Gemini/RAG thật. Khi chưa có tài liệu Knowledge được phê duyệt cho 10 di tích mới, chatbot sẽ báo không đủ thông tin. Nguồn chỉ xuất hiện khi có câu trả lời được hỗ trợ.</div></aside><article class="glass chat-panel"><div class="chat-header"><div class="avatar">${icon('compass')}</div><div><strong>Trợ lý di sản Huế</strong><small>Gemini / Knowledge đã phê duyệt · Trích dẫn nguồn khi có</small></div></div><div class="messages" id="messages" aria-live="polite">${chatMessages()}</div><form class="chat-form" id="chat-form"><input id="chat-input" placeholder="Bạn muốn tìm hiểu điều gì về Huế?" aria-label="Câu hỏi về di sản" maxlength="1000" required autocomplete="off" ${state.chatBusy?'disabled':''}><button class="icon-button dark" aria-label="Gửi câu hỏi" ${state.chatBusy?'disabled':''}>${icon('send')}</button></form></article></div>`}
 function chatMessages(){if(!state.chat.length&&!state.chatBusy)return `<div class="chat-welcome"><div class="audio-art">${icon('book')}</div><h2>Mỗi câu hỏi mở ra<br>một câu chuyện.</h2><p>Hãy hỏi về di tích tại Huế. Trợ lý chỉ trả lời khi có tài liệu được phê duyệt hỗ trợ.</p></div>`;return state.chat.map(m=>`<div class="message ${m.role==='user'?'user':''}">${esc(m.text)}${m.source?`<span class="source">${icon('book')} ${esc(m.source)}</span>`:''}</div>`).join('')+(state.chatBusy?'<div class="message" role="status">Đang tra cứu tài liệu và hỏi Gemini…</div>':'')}
@@ -378,4 +503,6 @@ document.addEventListener('change',e=>{if(e.target.id==='admin-mode'){state.admi
 document.addEventListener('keydown',e=>{if(e.target.closest?.('#promo-carousel')&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();setPromo(state.promoIndex+(e.key==='ArrowRight'?1:-1));syncPromoTimer()}if(e.key==='Escape'){closeModal();$('.sidebar').classList.remove('open')}if(e.target.id==='admin-search'&&e.key==='Enter'){state.adminSearch=e.target.value;render()}if(e.target.id==='global-search'&&e.key==='Enter'&&state.page==='admin'){state.adminSearch=e.target.value.trim();state.adminTab='content';render();return}if(e.target.id==='global-search'&&e.key==='Enter'){state.query=e.target.value.trim();state.filter='Tất cả';navigate('explore')}if(!$('#modal').hidden&&e.key==='Tab'){const items=$('#modal').querySelectorAll('button,input,textarea,a,select');const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
 document.addEventListener('submit',e=>{if(e.target.id==='admin-task-form'){e.preventDefault();const f=new FormData(e.target),title=String(f.get('title')||'').trim(),date=String(f.get('date')||'');if(!title||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;state.tasks.push({id:String(Date.now())+Math.random().toString(36).slice(2,7),title,date,done:false});write('hue-admin-tasks',state.tasks);closeModal();render();toast('Đã lưu công việc trên thiết bị.')}else if(e.target.id==='chat-form'){e.preventDefault();const input=$('#chat-input');sendQuestion(input.value)}else if(e.target.id==='edit-form'){e.preventDefault();const id=e.target.dataset.id;const f=new FormData(e.target),source=String(f.get('source')).trim(),review=e.submitter?.value==='review';if(review&&!source){toast('Vui lòng bổ sung nguồn tham khảo trước khi gửi duyệt.');$('#edit-source').focus();return}state.drafts[id]={name:String(f.get('name')).trim(),description:String(f.get('description')).trim(),source,status:review?'Chờ duyệt':'Bản nháp'};if(!state.drafts[id].name||!state.drafts[id].description){toast('Tên và nội dung không được để trống.');return}write('hue-content-drafts',state.drafts);closeModal();render();toast(review?'Đã chuyển sang chờ duyệt trên bản mô phỏng':'Đã lưu bản nháp trên thiết bị')}});
 window.addEventListener('hashchange',()=>{const previous=state.page;if(openingActive)finishOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');render();if(previous!==state.page)playCloudTransition($('#breadcrumb').textContent);window.scrollTo({top:0,behavior:'instant'});$('#content').focus({preventScroll:true})});window.addEventListener('pagehide',()=>{clearTimeout(cloudExitTimer);const cloud=$('#cloud-transition');if(cloud)cloud.hidden=true;clearInterval(promoTimer);speechSynthesisSafe()?.cancel()});
-if(!IS_ADMIN)initOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');$('#menu-toggle').innerHTML=icon('menu');$('#search-icon').innerHTML=icon('search');if($('#top-popular'))$('#top-popular').innerHTML=icon('trend');render();loadAttractionsFromBackend();if(IS_ADMIN)loadStaffAttractions();
+if(!IS_ADMIN)initOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');$('#menu-toggle').innerHTML=icon('menu');$('#search-icon').innerHTML=icon('search');if($('#top-popular'))$('#top-popular').innerHTML=icon('trend');render();loadAttractionsFromBackend();if (!IS_ADMIN) {
+  loadPublishedRoutesFromBackend();
+};if(IS_ADMIN)loadStaffAttractions();

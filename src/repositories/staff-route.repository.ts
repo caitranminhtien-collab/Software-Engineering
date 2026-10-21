@@ -404,3 +404,55 @@ export async function findStaffRouteStopsByRouteId(
 
   return result.rows;
 }
+
+export interface UpdateStaffRouteData {
+  nameVi?: string;
+  descriptionVi?: string;
+  estimatedMinutes?: number;
+}
+
+export async function updateStaffRouteDetails(
+  routeId: number,
+  input: UpdateStaffRouteData
+): Promise<StaffRouteRow | null> {
+  const result = await db.query<StaffRouteRow>(
+    `
+      UPDATE routes
+      SET
+        name_vi = COALESCE($2::text, name_vi),
+        description_vi = COALESCE($3::text, description_vi),
+        estimated_minutes = COALESCE($4::integer, estimated_minutes),
+
+        status = 'draft',
+        content_version = content_version + 1,
+        verified_at = NULL,
+        approved_by = NULL,
+        published_at = NULL
+
+      WHERE route_id = $1
+        AND status IN ('draft', 'published')
+
+      RETURNING
+        route_id,
+        slug,
+        name_vi,
+        description_vi,
+        area_code,
+        estimated_minutes,
+        verified_at,
+        status,
+        content_version,
+        created_by,
+        approved_by,
+        published_at
+    `,
+    [
+      routeId,
+      input.nameVi ?? null,
+      input.descriptionVi ?? null,
+      input.estimatedMinutes ?? null,
+    ]
+  );
+
+  return result.rows[0] ?? null;
+}

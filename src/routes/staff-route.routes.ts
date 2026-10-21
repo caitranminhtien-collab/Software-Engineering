@@ -7,6 +7,7 @@ import {
   getStaffRouteController,
   listStaffRoutesController,
   replaceStaffRouteStopsController,
+  updateStaffRouteController,
 } from "../controllers/staff-route.controller";
 
 import {
@@ -25,6 +26,7 @@ import {
   validateCreateStaffRoute,
   validateStaffRouteParams,
   validateUpdateStaffRouteStops,
+  validateUpdateStaffRoute,
 } from "../validators/staff-route.validator";
 
 const router = Router();
@@ -74,5 +76,20 @@ router.put(
   validateUpdateStaffRouteStops,
   replaceStaffRouteStopsController
 );
+
+
+router.patch(
+  "/:id",
+  requireStaffSession,
+  requireStaffRole(
+    "editor",
+    "admin"
+  ),
+  requireCsrfToken,
+  validateStaffRouteParams,
+  validateUpdateStaffRoute,
+  updateStaffRouteController
+);
+
 
 export default router;

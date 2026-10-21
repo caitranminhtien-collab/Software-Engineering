@@ -6,10 +6,12 @@ import {
   replaceRouteStopsAtomically,
   findAllStaffRoutes,
   findStaffRouteStopsByRouteId,
+  updateStaffRouteDetails,
 } from "../repositories/staff-route.repository";
 
 import type {
   StaffRouteStopInput,
+  UpdateStaffRouteBody,
 } from "../validators/staff-route.validator";
 
 export interface CreateStaffRouteInput {
@@ -345,4 +347,35 @@ export async function getStaffRoute(
             ),
     })),
   };
+}
+
+export async function updateStaffRoute(
+  routeId: number,
+  input: UpdateStaffRouteBody
+): Promise<StaffRouteResult> {
+  const existingRoute =
+    await findStaffRouteById(routeId);
+
+  if (!existingRoute) {
+    throw new StaffRouteNotFoundError();
+  }
+
+  if (
+    existingRoute.status !== "draft" &&
+    existingRoute.status !== "published"
+  ) {
+    throw new StaffRouteEditConflictError();
+  }
+
+  const updatedRoute =
+    await updateStaffRouteDetails(
+      routeId,
+      input
+    );
+
+  if (!updatedRoute) {
+    throw new StaffRouteEditConflictError();
+  }
+
+  return mapStaffRoute(updatedRoute);
 }

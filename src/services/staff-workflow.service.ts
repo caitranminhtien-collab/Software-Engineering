@@ -325,6 +325,9 @@ export async function reviewStaffWorkflow(
   ) {
     throw new StaffWorkflowReviewConflictError();
   }
+  if (route.incomplete_timing_count > 0) {
+  throw new StaffWorkflowReviewConflictError();
+}
 }
 
   const reviewed =
@@ -463,6 +466,11 @@ export async function publishStaffWorkflow(
       "All route stops must reference published attractions with published Vietnamese localizations before publication"
     );
   }
+  if (route.incomplete_timing_count > 0) {
+  throw new StaffPublishReadinessError(
+    "All route stops must have valid visit and travel times before publication"
+  );
+}
 }
 
   if (

@@ -324,6 +324,7 @@ describe(
 
           unavailable_stop_count:
             1,
+          incomplete_timing_count: 0,
         });
 
         await expect(
@@ -445,11 +446,9 @@ describe(
           verified_at:
             null,
 
-          stop_count:
-            2,
-
-          unavailable_stop_count:
-            0,
+          stop_count: 2,
+          unavailable_stop_count: 0,
+          incomplete_timing_count: 0,
         });
 
         await expect(
@@ -713,5 +712,105 @@ describe(
         });
       }
     );
+    
+    it("rejects route approval when timing is incomplete", async () => {
+      mockCurrent("in_review", 2, 1);
+
+      vi.mocked(findRoutePublishReadiness).mockResolvedValue({
+        route_id: "2",
+        verified_at: null,
+        stop_count: 3,
+        unavailable_stop_count: 0,
+        incomplete_timing_count: 2,
+      });
+
+      await expect(
+        reviewStaffWorkflow("routes", 2, "approve", 1)
+      ).rejects.toBeInstanceOf(
+        StaffWorkflowReviewConflictError
+      );
+
+      expect(reviewVisitorWorkflowResource)
+        .not.toHaveBeenCalled();
+    });
+
+    it("rejects route publication when timing is incomplete", async () => {
+      mockCurrent("in_review", 2, 1);
+
+      vi.mocked(findRoutePublishReadiness).mockResolvedValue({
+        route_id: "2",
+        verified_at: new Date("2026-10-21T10:00:00Z"),
+        stop_count: 3,
+        unavailable_stop_count: 0,
+        incomplete_timing_count: 1,
+      });
+
+      await expect(
+        publishStaffWorkflow("routes", 2, 1)
+      ).rejects.toThrow(
+        "All route stops must have valid visit and travel times before publication"
+      );
+
+      expect(publishVisitorWorkflowResource)
+        .not.toHaveBeenCalled();
+    });
+
+    it("approves a route with complete timing", async () => {
+      mockCurrent("in_review", 2, 1);
+
+      vi.mocked(findRoutePublishReadiness).mockResolvedValue({
+        route_id: "2",
+        verified_at: null,
+        stop_count: 3,
+        unavailable_stop_count: 0,
+        incomplete_timing_count: 0,
+      });
+
+      vi.mocked(reviewVisitorWorkflowResource).mockResolvedValue({
+        resource_id: "2",
+        status: "in_review",
+        version: 1,
+      });
+
+      const result = await reviewStaffWorkflow(
+        "routes", 2, "approve", 1
+      );
+
+      expect(result.status).toBe("in_review");
+
+      expect(reviewVisitorWorkflowResource)
+        .toHaveBeenCalledWith("routes", 2, "approve");
+    });
+
+    it("publishes a verified route with complete timing", async () => {
+      mockCurrent("in_review", 2, 1);
+
+      vi.mocked(findRoutePublishReadiness).mockResolvedValue({
+        route_id: "2",
+        verified_at: new Date("2026-10-21T10:00:00Z"),
+        stop_count: 3,
+        unavailable_stop_count: 0,
+        incomplete_timing_count: 0,
+      });
+
+      vi.mocked(publishVisitorWorkflowResource).mockResolvedValue({
+        resource_id: "2",
+        status: "published",
+        version: 1,
+        approved_by: "1",
+        published_at: new Date("2026-10-21T11:00:00Z"),
+      });
+
+      const result = await publishStaffWorkflow(
+        "routes", 2, 1
+      );
+
+      expect(result.status).toBe("published");
+      expect(result.approved_by).toBe(1);
+
+      expect(publishVisitorWorkflowResource)
+        .toHaveBeenCalledWith("routes", 2, 1);
+    });
+
   }
 );

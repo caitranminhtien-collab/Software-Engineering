@@ -409,3 +409,104 @@ export function validateUpdateStaffRouteStops(
 
   next();
 }
+
+export interface UpdateStaffRouteBody {
+  nameVi?: string;
+  descriptionVi?: string;
+  estimatedMinutes?: number;
+}
+
+export function validateUpdateStaffRoute(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  const errors: string[] = [];
+  const rawBody: unknown = req.body;
+
+  if (
+    typeof rawBody !== "object" ||
+    rawBody === null ||
+    Array.isArray(rawBody)
+  ) {
+    res.status(400).json({
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Invalid route update body",
+        details: ["Request body must be an object"],
+      },
+    });
+    return;
+  }
+
+  const body = rawBody as Record<string, unknown>;
+
+  const allowedFields = [
+    "name_vi",
+    "description_vi",
+    "estimated_minutes",
+  ];
+
+  const keys = Object.keys(body);
+
+  if (keys.length === 0) {
+    errors.push("At least one field is required");
+  }
+
+  for (const key of keys) {
+    if (!allowedFields.includes(key)) {
+      errors.push(`Field ${key} is not allowed`);
+    }
+  }
+
+  const updated: UpdateStaffRouteBody = {};
+
+  if (Object.prototype.hasOwnProperty.call(body, "name_vi")) {
+    if (
+      typeof body.name_vi !== "string" ||
+      !body.name_vi.trim()
+    ) {
+      errors.push("name_vi must be a non-empty string");
+    } else {
+      updated.nameVi = body.name_vi.trim();
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "description_vi")) {
+    if (
+      typeof body.description_vi !== "string" ||
+      !body.description_vi.trim()
+    ) {
+      errors.push("description_vi must be a non-empty string");
+    } else {
+      updated.descriptionVi = body.description_vi.trim();
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "estimated_minutes")) {
+    if (
+      typeof body.estimated_minutes !== "number" ||
+      !Number.isInteger(body.estimated_minutes) ||
+      body.estimated_minutes <= 0
+    ) {
+      errors.push("estimated_minutes must be a positive integer");
+    } else {
+      updated.estimatedMinutes = body.estimated_minutes;
+    }
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Invalid route update body",
+        details: errors,
+      },
+    });
+    return;
+  }
+
+  res.locals.updateStaffRouteBody = updated;
+
+  next();
+}

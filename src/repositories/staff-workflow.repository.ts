@@ -37,6 +37,8 @@ export interface RoutePublishReadinessRow
   stop_count: number;
 
   unavailable_stop_count: number;
+
+  incomplete_timing_count: number;
 }
 
 export interface KnowledgeReviewReadinessRow
@@ -739,8 +741,30 @@ export async function findRoutePublishReadiness(
                   vi_loc.localization_id
                   IS NULL
               )
-          )::integer
-            AS unavailable_stop_count
+          
+)::integer
+  AS unavailable_stop_count,
+
+COUNT(rs.route_stop_id) FILTER (
+  WHERE
+    rs.visit_minutes IS NULL
+    OR rs.visit_minutes <= 0
+
+    OR (
+      rs.stop_order = 1
+      AND rs.travel_minutes_from_previous IS NOT NULL
+    )
+
+    OR (
+      rs.stop_order > 1
+      AND (
+        rs.travel_minutes_from_previous IS NULL
+        OR rs.travel_minutes_from_previous < 0
+      )
+    )
+)::integer
+  AS incomplete_timing_count
+
 
         FROM routes AS r
 

@@ -12,12 +12,14 @@ import {
   StaffRouteSlugConflictError,
   getStaffRoute,
   listStaffRoutes,
+  updateStaffRoute,
 } from "../services/staff-route.service";
 
 import type {
   CreateStaffRouteBody,
   StaffRouteParams,
   UpdateStaffRouteStopsBody,
+  UpdateStaffRouteBody,
 } from "../validators/staff-route.validator";
 
 export async function createStaffRouteController(
@@ -245,6 +247,55 @@ export async function getStaffRouteController(
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Unable to get route",
+      },
+    });
+  }
+}
+
+export async function updateStaffRouteController(
+  _req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const { routeId } =
+      res.locals.staffRouteParams as StaffRouteParams;
+
+    const body =
+      res.locals.updateStaffRouteBody as UpdateStaffRouteBody;
+
+    const updatedRoute =
+      await updateStaffRoute(routeId, body);
+
+    res.status(200).json({
+      data: updatedRoute,
+    });
+  } catch (error) {
+    if (error instanceof StaffRouteNotFoundError) {
+      res.status(404).json({
+        error: {
+          code: "NOT_FOUND",
+          message: "Route not found",
+        },
+      });
+      return;
+    }
+
+    if (error instanceof StaffRouteEditConflictError) {
+      res.status(409).json({
+        error: {
+          code: "ROUTE_EDIT_CONFLICT",
+          message: "Route cannot be edited in its current status",
+        },
+      });
+      return;
+    }
+
+    console.error("Update staff route failed:", error);
+
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unable to update route",
       },
     });
   }
