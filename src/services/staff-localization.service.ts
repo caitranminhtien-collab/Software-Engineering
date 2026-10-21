@@ -47,6 +47,75 @@ export class StaffLocalizationWorkflowConflictError
   }
 }
 
+export class StaffLocalizationNotFoundError
+  extends Error {
+  constructor() {
+    super("Localization not found");
+
+    this.name =
+      "StaffLocalizationNotFoundError";
+  }
+}
+
+export interface StaffLocalizationReadResult {
+  id: number;
+  attraction_id: number;
+  language_code: string;
+  name: string;
+  description: string;
+  source_references: unknown[];
+  status:
+    | "draft"
+    | "in_review"
+    | "published"
+    | "archived";
+  content_version: number;
+  approved_by: number | null;
+  published_at: Date | null;
+}
+
+export async function getStaffLocalization(
+  attractionId: number,
+  language: string
+): Promise<StaffLocalizationReadResult> {
+  const localization =
+    await findStaffLocalization(
+      attractionId,
+      language
+    );
+
+  if (!localization) {
+    throw new StaffLocalizationNotFoundError();
+  }
+
+  return {
+    id: Number(localization.localization_id),
+    attraction_id: Number(
+      localization.attraction_id
+    ),
+    language_code:
+      localization.language_code,
+    name: localization.name,
+    description:
+      localization.description,
+    source_references:
+      parseSourceReferences(
+        localization.source_references
+      ),
+    status: localization.status,
+    content_version:
+      localization.content_version,
+    approved_by:
+      localization.approved_by === null
+        ? null
+        : Number(
+            localization.approved_by
+          ),
+    published_at:
+      localization.published_at,
+  };
+}
+
 function parseSourceReferences(
   value: string
 ): unknown[] {

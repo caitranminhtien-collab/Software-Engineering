@@ -131,6 +131,40 @@
   function modalBody(row, editing = false) {
     const status = statusLabels[row?.status] || row?.status || 'Bản nháp';
     const canWrite = !editing || row.status === 'draft';
+    const localization = editing
+      ? (sourceByAttraction.get(idFrom(row)) ?? localizationsFrom(row))
+      : null;
+    const localizationId = Number(localization?.id ?? localization?.localization_id);
+    const localizationStatus = localization?.status
+      ? (statusLabels[localization.status] || localization.status)
+      : 'Chưa có nội dung tiếng Việt';
+
+    // Localization co workflow rieng voi Attraction.
+    const localizationButtons =
+      editing && Number.isInteger(localizationId) && localizationId > 0
+        ? localization?.status === 'draft'
+          ? `<button type="button" class="button"
+               data-hue-admin-action="submit"
+               data-hue-admin-resource="localizations"
+               data-hue-admin-id="${localizationId}">
+               Gửi duyệt nội dung tiếng Việt
+             </button>`
+          : localization?.status === 'in_review'
+            ? `<button type="button" class="button outline"
+                 data-hue-admin-action="reject"
+                 data-hue-admin-resource="localizations"
+                 data-hue-admin-id="${localizationId}">
+                 Từ chối nội dung tiếng Việt
+               </button>
+               <button type="button" class="button"
+                 data-hue-admin-action="publish"
+                 data-hue-admin-resource="localizations"
+                 data-hue-admin-id="${localizationId}">
+                 Xuất bản nội dung tiếng Việt
+               </button>`
+            : ''
+        : '';
+
     const readonlyNote = editing && !canWrite
       ? `<div class="notice">Bản ghi đang ở trạng thái <b>${esc(status)}</b>. Backend hiện không cho sửa trực tiếp di tích đã xuất bản hoặc đang chờ duyệt. Không có API xóa di tích.</div>`
       : editing ? `<div class="notice">Chỉ sửa được bản nháp. Khi xuất bản, nội dung cần được duyệt lại theo quy trình Backend.</div>`
@@ -138,6 +172,12 @@
     return `<p class="eyebrow">QUẢN LÝ DI TÍCH · POSTGRESQL</p>
       <h2>${editing ? 'Chi tiết di tích #' + idFrom(row) : 'Thêm di tích mới'}</h2>
       <p>${editing ? `Trạng thái: ${esc(status)} · ${esc(row.slug)}` : 'Tạo một bản nháp mới trong Backend Hue Tourism Guide.'}</p>
+      ${editing ? `
+        <div class="notice">
+          <strong>Nội dung tiếng Việt:</strong> ${esc(localizationStatus)}
+          ${Number.isInteger(localizationId) && localizationId > 0 ? ` · Localization #${localizationId}` : ''}
+        </div>` : ''}
+      ${localizationButtons ? `<div class="modal-actions">${localizationButtons}</div>` : ''}
       <form id="hue-admin-real-form" style="max-height:65vh;overflow-y:auto;padding-right:8px" data-mode="${editing?'edit':'create'}" data-attraction-id="${editing?idFrom(row):''}">
         ${formControls(row, editing)}
         <div class="modal-actions">${canWrite?`<button class="button" type="submit">${editing?'Lưu bản nháp':'Tạo di tích mới'}</button>`:''}<button class="button outline" type="button" data-hue-admin-close>Đóng</button></div>
@@ -191,6 +231,18 @@
     if (!row) fail('Không tìm thấy di tích trong danh sách.');
     const detail = await request(`/staff/attractions/${id}`);
     row = { ...row, ...(detail && typeof detail === 'object' ? detail : {}) };
+
+    try {
+      const localization = await request(`/staff/attractions/${id}/localizations/vi`);
+      if (localization && typeof localization === 'object') {
+        sourceByAttraction.set(id, localization);
+      }
+    } catch (error) {
+      // Attraction moi co the chua co localization, nhung loi khac phai thong bao.
+      if (error.status !== 404) throw error;
+      sourceByAttraction.delete(id);
+    }
+
     window.openModal(modalBody(row, true));
   }
   function collectData(form) {
@@ -262,6 +314,16 @@
     const data = ['approve','reject'].includes(action) ? {decision:action} : undefined;
     await request(`/staff/${resource}/${id}/${pathAction}`,{method:'POST',data});
     window.toast?.({submit:'Đã gửi duyệt.',approve:'Đã phê duyệt.',reject:'Đã từ chối.',publish:'Đã xuất bản.'}[action]);
+
+    if (resource === 'localizations') {
+      // Dong modal va xoa cache de lan mo sau lay trang thai moi tu Backend.
+      const form = document.getElementById('hue-admin-real-form');
+      const attractionId = Number(form?.dataset.attractionId);
+      if (Number.isInteger(attractionId) && attractionId > 0) {
+        sourceByAttraction.delete(attractionId);
+      }
+      window.closeModal();
+    }
     refresh();
   }
   async function guarded(task) {
@@ -286,7 +348,11 @@
       return;
     }
     if (control.hasAttribute('data-hue-admin-action')) {
-      guarded(() => workflow(control.dataset.hueAdminAction,control.dataset.hueAdminId));
+      guarded(() => workflow(
+        control.dataset.hueAdminAction,
+        control.dataset.hueAdminId,
+        control.dataset.hueAdminResource || 'attractions'
+      ));
     }
   }, true);
   document.addEventListener('submit', event => {

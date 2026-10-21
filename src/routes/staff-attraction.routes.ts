@@ -39,6 +39,7 @@ import {
 } from "../validators/staff-media.validator";
 
 import {
+  getStaffLocalizationController,
   upsertStaffLocalizationController,
 } from "../controllers/staff-localization.controller";
 
@@ -93,6 +94,18 @@ router.patch(
   validateStaffAttractionId,
   validateUpdateStaffAttraction,
   updateStaffAttractionController
+);
+
+router.get(
+  "/:id/localizations/:language",
+  requireStaffSession,
+  requireStaffRole(
+    "editor",
+    "reviewer",
+    "admin"
+  ),
+  validateStaffLocalizationParams,
+  getStaffLocalizationController
 );
 
 router.put(

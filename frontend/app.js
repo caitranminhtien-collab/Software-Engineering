@@ -45,45 +45,141 @@ async function fetchJson(path) {
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }
+
 async function loadAttractionsFromBackend() {
   try {
-    const payload = await fetchJson('/api/v1/attractions');
-    const records = apiItems(payload);
+    const records = [];
+
+    // Lay tat ca trang di tich da xuat ban
+    for (let page = 1; page <= 100; page++) {
+      const payload = await fetchJson(
+        `/api/v1/attractions?language=vi&page=${page}&page_size=100`
+      );
+
+      records.push(...apiItems(payload));
+
+      const totalPages = Number(
+        payload.pagination?.total_pages ?? 1
+      );
+
+      if (!Number.isInteger(totalPages) || totalPages < 1) {
+        throw new Error('Phân trang API không hợp lệ');
+      }
+
+      if (page >= totalPages) break;
+      if (page === 100) {
+        throw new Error('Danh sách di tích vượt giới hạn đồng bộ');
+      }
+    }
+
     const existing = new Map(places.map(p => [p.id, p]));
     const next = [];
+    const seen = new Set();
+
     for (const item of records) {
-      const slug = String(item.slug ?? '');
-      const local = existing.get(slug);
-      // Unknown slugs are intentionally excluded from this ten-attraction design.
-      if (!local) continue;
+      const slug = String(item.slug ?? '').trim();
+
+      if (!slug || seen.has(slug)) continue;
+
+      const dbId = Number(item.id ?? item.attraction_id);
       const latitude = Number(item.latitude);
       const longitude = Number(item.longitude);
-      if (!validHuePoint(latitude, longitude)) throw new Error(`Tọa độ không hợp lệ: ${slug}`);
-      next.push({ ...local,
-        dbId: Number(item.id ?? item.attraction_id),
-        name: cleanApiText(item.name || local.name, 255),
-        intro: cleanApiText(item.description || local.intro),
-        latitude, longitude,
-        contentLanguage: cleanApiText(item.content_language ?? item.language_code ?? 'vi', 10)
+
+      if (!Number.isSafeInteger(dbId) || dbId <= 0) {
+        throw new Error(`ID không hợp lệ: ${slug}`);
+      }
+
+      if (!validHuePoint(latitude, longitude)) {
+        throw new Error(`Tọa độ không hợp lệ: ${slug}`);
+      }
+
+      const local = existing.get(slug);
+      let detail = null;
+
+      // Di tich moi: doc noi dung tu Backend
+      if (!local) {
+        try {
+          const result = await fetchJson(
+            `/api/v1/attractions/${dbId}?language=vi`
+          );
+
+          detail = result?.data ?? null;
+        } catch (error) {
+          console.warn('Không tải được mô tả di tích:', slug, error);
+        }
+      }
+
+      const name = cleanApiText(
+        item.name || detail?.name || local?.name || slug,
+        255
+      );
+
+      const description = cleanApiText(
+        detail?.description || item.description || '',
+        3000
+      );
+
+      next.push({
+        ...local,
+        id: slug,
+        dbId,
+        name,
+        type: local?.type || 'Di tích',
+        intro: description || local?.intro ||
+          'Thông tin di tích đang được cập nhật.',
+        text: description || local?.text ||
+          'Chưa có nội dung thuyết minh.',
+        en: local?.en ||
+          'Explore this attraction in Hue with Hue Guide.',
+        latitude,
+        longitude,
+        contentLanguage: cleanApiText(
+          item.content_language ?? 'vi',
+          10
+        )
       });
+
+      seen.add(slug);
     }
-    if (next.length !== 10 || new Set(next.map(p => p.id)).size !== 10) {
-      throw new Error(`API trả ${next.length}/10 di tích theo thiết kế. Chưa đồng bộ.`);
+
+    if (!next.length) {
+      throw new Error('API chưa trả về di tích đã xuất bản');
     }
-    // Keep the exact visual order from the original Hue Guide design.
-    const rank = new Map([...existing.keys()].map((slug, i) => [slug,i]));
-    next.sort((x,y) => rank.get(x.id)-rank.get(y.id));
+
+    // Giu thu tu 10 di tich cu, them di tich moi phia sau
+    const rank = new Map(
+      [...existing.keys()].map((slug, i) => [slug, i])
+    );
+
+    next.sort((a, b) =>
+      (rank.get(a.id) ?? 999999) -
+      (rank.get(b.id) ?? 999999)
+    );
+
     places.splice(0, places.length, ...next);
-    attractionApi.status='ready';
-    attractionApi.message='';
-    if (places.some(p => p.id === state.mapId) === false) state.mapId=places[0].id;
-    if (state.page !== 'chat' && !state.playing) render();
+
+    attractionApi.status = 'ready';
+    attractionApi.message = '';
+
+    if (!places.some(p => p.id === state.mapId)) {
+      state.mapId = places[0].id;
+    }
+
+    if (state.page !== 'chat' && !state.playing) {
+      render();
+    }
   } catch (error) {
-    attractionApi.status='error';
-    attractionApi.message=`Chưa đồng bộ được PostgreSQL (${cleanApiText(error.message,180)}). Đang hiển thị dữ liệu giao diện mẫu; vị trí GPS không khả dụng.`;
-    if (state.page !== 'chat' && !state.playing) render();
+    attractionApi.status = 'error';
+    attractionApi.message =
+      `Chưa đồng bộ được PostgreSQL (${cleanApiText(error.message, 180)}). ` +
+      'Đang hiển thị dữ liệu giao diện mẫu; vị trí GPS không khả dụng.';
+
+    if (state.page !== 'chat' && !state.playing) {
+      render();
+    }
   }
 }
+
 async function loadStaffAttractions() {
   if (!IS_ADMIN) return;
   attractionApi.staffStatus='loading';

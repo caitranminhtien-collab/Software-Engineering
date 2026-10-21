@@ -4,7 +4,9 @@ import type {
 } from "express";
 
 import {
+  getStaffLocalization,
   StaffLocalizationAttractionNotFoundError,
+  StaffLocalizationNotFoundError,
   StaffLocalizationWorkflowConflictError,
   upsertStaffLocalization,
 } from "../services/staff-localization.service";
@@ -13,6 +15,56 @@ import type {
   StaffLocalizationParams,
   UpsertStaffLocalizationBody,
 } from "../validators/staff-localization.validator";
+
+export async function getStaffLocalizationController(
+  _req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const {
+      attractionId,
+      language,
+    } = res.locals
+      .staffLocalizationParams as StaffLocalizationParams;
+
+    const localization =
+      await getStaffLocalization(
+        attractionId,
+        language
+      );
+
+    res.status(200).json({
+      data: localization,
+    });
+  } catch (error) {
+    if (
+      error instanceof
+      StaffLocalizationNotFoundError
+    ) {
+      res.status(404).json({
+        error: {
+          code: "NOT_FOUND",
+          message: "Localization not found",
+        },
+      });
+
+      return;
+    }
+
+    console.error(
+      "Get staff localization failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          "Unable to load localization",
+      },
+    });
+  }
+}
 
 export async function upsertStaffLocalizationController(
   _req: Request,
