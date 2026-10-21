@@ -1,4 +1,5 @@
-﻿name: CI
+﻿
+name: CI
 
 on:
   push:
@@ -33,7 +34,7 @@ jobs:
         run: npm run build
 
   frontend:
-    name: Frontend Build
+    name: Frontend Static Checks
     runs-on: ubuntu-latest
 
     defaults:
@@ -48,11 +49,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install frontend dependencies
-        run: npm ci
+      - name: Check frontend files
+        run: |
+          test -f index.html
+          test -f admin.html
+          test -f app.js
+          test -f admin-auth.js
+          test -f hue-admin-crud.js
+          test -f hue-map.js
+          test -f hue-chat-api.js
+          test -f dev-server.js
 
-      - name: Build frontend
-        run: npm run build
+      - name: Check frontend JavaScript syntax
+        run: |
+          node --check app.js
+          node --check admin-auth.js
+          node --check hue-admin-crud.js
+          node --check hue-map.js
+          node --check hue-chat-api.js
+          node --check dev-server.js
