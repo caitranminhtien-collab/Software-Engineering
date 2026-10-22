@@ -19,7 +19,7 @@ const places=[
 places.forEach(p=>{p.text=p.text||`${p.name} là một địa điểm trong phạm vi thử nghiệm của Hue Guide. Bạn có thể xem thông tin, khám phá điểm đến và nghe bản đọc nội dung. Đây là bản thuyết minh mẫu để trải nghiệm giao diện. Nguồn lịch sử, tọa độ, lối vào và giờ mở cửa cần được xác minh trước khi sử dụng thực tế.`;p.en=p.en||`You are exploring ${p.name}, a destination in the Hue Guide prototype. This is sample narration for testing the interface. Historical content and visitor information require verification before publication.`});
 const routes=[{id:'royal',name:'Dấu ấn cung đình',subtitle:'Bắt đầu từ những không gian quen thuộc của Cố đô.',stops:['dai-noi','an-dinh','nam-giao']},{id:'tombs',name:'Hành trình lăng tẩm',subtitle:'Một lựa chọn dành cho người yêu kiến trúc di sản.',stops:['tu-duc','dong-khanh','khai-dinh']},{id:'heritage',name:'Theo dấu di sản',subtitle:'Tự chọn nhịp điệu, nối tiếp những điểm dừng.',stops:['dai-noi','minh-mang','gia-long']}];
 const navItems=[['home','home','Tổng quan'],['explore','compass','Khám phá di tích'],['map','map','Bản đồ'],['routes','route','Tuyến tham quan'],['audio','headphones','Thuyết minh'],['chat','chat','Hỏi đáp di sản'],['popular','trend','Tham quan nhiều nhất'],['weather','sun','Thời tiết Huế']];
-const state={page:'home',query:'',filter:'Tất cả',recent:read('hue-recent',[]),viewed:read('hue-viewed',read('hue-recent',[])),routeId:'royal',activeRoute:read('hue-active-route',null),mapId:'dai-noi',realMap:false,location:null,trackId:'dai-noi',audioLanguage:read('hue-audio-language','vi-VN'),playing:false,paused:false,progress:0,elapsed:0,utterance:null,chat:[],chatBusy:false,drafts:read('hue-content-drafts',{}),promoIndex:0,promoPaused:false,adminFilter:'Tất cả',adminTab:'dashboard',adminMode:'demo',adminPeriod:7,adminSearch:'',tasks:read('hue-admin-tasks',[])};
+const state={page:'home',query:'',filter:'Tất cả',recent:read('hue-recent',[]),viewed:read('hue-viewed',read('hue-recent',[])),routeId:'royal',activeRoute:read('hue-active-route',null),mapId:'dai-noi',realMap:false,location:null,trackId:'dai-noi',audioLanguage:read('hue-audio-language','vi-VN'),playing:false,paused:false,progress:0,elapsed:0,utterance:null,chat:[],chatBusy:false,drafts:read('hue-content-drafts',{}),promoIndex:0,promoPaused:false,adminFilter:'Tất cả',adminTab:'dashboard',adminMode:'demo',adminPeriod:7,adminSearch:'',staffRouteFilter:'all',tasks:read('hue-admin-tasks',[])};
 const byId=id=>places.find(p=>p.id===id)||places[0];
 const $=q=>document.querySelector(q);
 const IS_ADMIN=document.body.dataset.area==='admin';
@@ -48,65 +48,96 @@ async function fetchJson(path) {
 
 
 const publicRouteApi = {
-  status: "loading",
+  status: 'loading',
   items: [],
-  message: ""
+  message: '',
+  selectedId: null,
+  detailStatus: 'idle',
+  detail: null,
+  detailMessage: ''
 };
+
+function validPublicRouteId(value) {
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
 
 async function loadPublishedRoutesFromBackend() {
   try {
     const allRoutes = [];
-
     for (let page = 1; page <= 100; page++) {
-      const payload = await fetchJson(
-        `/api/v1/routes?page=${page}&page_size=100`
-      );
-
-      if (!Array.isArray(payload.data)) {
-        throw new Error("Invalid routes API response");
-      }
-
+      const payload = await fetchJson(`/api/v1/routes?page=${page}&page_size=100`);
+      if (!Array.isArray(payload?.data)) throw new Error('Danh sách tuyến từ API không hợp lệ');
       allRoutes.push(...payload.data);
-
-      const totalPages = Number(
-        payload.pagination?.total_pages ?? 1
-      );
-
-      if (
-        !Number.isInteger(totalPages) ||
-        totalPages < 0 ||
-        totalPages > 100
-      ) {
-        throw new Error("Invalid routes pagination");
+      const totalPages = Number(payload.pagination?.total_pages ?? 1);
+      if (!Number.isInteger(totalPages) || totalPages < 0 || totalPages > 100) {
+        throw new Error('Phân trang tuyến không hợp lệ');
       }
-
       if (page >= totalPages) break;
     }
-
-    publicRouteApi.items = allRoutes;
-    publicRouteApi.status = "ready";
-    publicRouteApi.message = allRoutes.length
-      ? ""
-      : "Hiện chưa có tuyến tham quan được xuất bản.";
-
-    console.info(
-      "[Routes API] Số tuyến published:",
-      allRoutes.length
-    );
+    publicRouteApi.items = allRoutes.filter(route => validPublicRouteId(route.id));
+    publicRouteApi.status = 'ready';
+    publicRouteApi.message = allRoutes.length ? '' : 'Chưa có tuyến được xuất bản.';
+    console.info('[Routes API] Số tuyến published:', publicRouteApi.items.length);
+    if (publicRouteApi.items.length) {
+      const found = publicRouteApi.items.some(route => Number(route.id) === publicRouteApi.selectedId);
+      await selectPublishedRoute(found ? publicRouteApi.selectedId : publicRouteApi.items[0].id);
+    } else {
+      publicRouteApi.selectedId = null;
+      publicRouteApi.detail = null;
+      publicRouteApi.detailStatus = 'idle';
+    }
   } catch (error) {
-    publicRouteApi.status = "error";
-    publicRouteApi.message =
-      "Không thể tải tuyến tham quan từ Backend.";
-
-    console.error("[Routes API]", error);
-  }
-  finally {
-  if (!IS_ADMIN && state.page === "routes") {
-    render();
+    publicRouteApi.status = 'error';
+    publicRouteApi.message = 'Không thể tải tuyến tham quan từ Backend.';
+    console.error('[Routes API]', error);
+  } finally {
+    if (!IS_ADMIN && ['routes', 'home'].includes(state.page)) render();
   }
 }
-}
 
+let publicRouteDetailRequest = 0;
+async function selectPublishedRoute(value) {
+  const routeId = validPublicRouteId(value);
+  if (!routeId || !publicRouteApi.items.some(route => Number(route.id) === routeId)) return;
+  const requestId = ++publicRouteDetailRequest;
+  publicRouteApi.selectedId = routeId;
+  publicRouteApi.detail = null;
+  publicRouteApi.detailStatus = 'loading';
+  publicRouteApi.detailMessage = '';
+  if (!IS_ADMIN && state.page === 'routes') render();
+  try {
+    const payload = await fetchJson(`/api/v1/routes/${routeId}`);
+    const route = payload?.data;
+    if (!route || Number(route.id) !== routeId || !Array.isArray(route.stops)) {
+      throw new Error('Chi tiết tuyến không hợp lệ');
+    }
+    const stops = route.stops.map(stop => ({
+      ...stop,
+      order: Number(stop.order),
+      attraction_id: Number(stop.attraction_id),
+      latitude: Number(stop.latitude),
+      longitude: Number(stop.longitude),
+      visit_minutes: stop.visit_minutes == null ? null : Number(stop.visit_minutes),
+      travel_minutes_from_previous: stop.travel_minutes_from_previous == null
+        ? null : Number(stop.travel_minutes_from_previous)
+    })).sort((a,b) => a.order - b.order);
+    if (!stops.every(stop => validHuePoint(stop.latitude, stop.longitude))) {
+      throw new Error('Tuyến chứa tọa độ chưa hợp lệ');
+    }
+    if (requestId !== publicRouteDetailRequest) return;
+    publicRouteApi.detail = {...route, stops};
+    publicRouteApi.detailStatus = 'ready';
+  } catch (error) {
+    if (requestId !== publicRouteDetailRequest) return;
+    publicRouteApi.detail = null;
+    publicRouteApi.detailStatus = 'error';
+    publicRouteApi.detailMessage = 'Chưa tải được chi tiết điểm dừng. Hãy thử lại.';
+    console.error('[Route Detail API]', error);
+  } finally {
+    if (requestId === publicRouteDetailRequest && !IS_ADMIN && state.page === 'routes') render();
+  }
+}
 
 async function loadAttractionsFromBackend() {
   try {
@@ -293,7 +324,7 @@ function renderPromo(){return `<article class="glass promo-carousel" id="promo-c
 function setPromo(index){state.promoIndex=(index+promoSlides.length)%promoSlides.length;if(state.page!=='home')return;promoSlides.forEach((_,i)=>{const slide=$('#promo-slide-'+i),dot=$('#promo-dot-'+i);if(slide)slide.hidden=i!==state.promoIndex;if(dot)dot.setAttribute('aria-pressed',String(i===state.promoIndex))});const counter=$('#promo-counter');if(counter)counter.textContent=String(state.promoIndex+1).padStart(2,'0')+' / 03'}
 function syncPromoTimer(){clearInterval(promoTimer);promoTimer=null;if(openingActive||state.page!=='home'||state.promoPaused||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;promoTimer=setInterval(()=>{const area=$('#promo-carousel');if(state.page!=='home'||document.hidden||!area||(area.contains(document.activeElement)&&document.activeElement?.matches?.(':focus-visible')))return;setPromo(state.promoIndex+1)},4000)}
 function togglePromo(){state.promoPaused=!state.promoPaused;const b=$('#promo-pause');if(b){b.innerHTML=icon(state.promoPaused?'play':'pause');b.setAttribute('aria-pressed',String(state.promoPaused));b.setAttribute('aria-label',state.promoPaused?'Tiếp tục tự chuyển slide':'Tạm dừng tự chuyển slide')}syncPromoTimer()}
-function renderHome(){const date=new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Asia/Ho_Chi_Minh'}).format(new Date());const active=state.activeRoute&&routes.find(r=>r.id===state.activeRoute.id);return `${header('Tổng quan','Một góc nhìn, trọn hành trình khám phá Huế.','HUE GUIDE · KHÔNG GIAN CỦA BẠN',`<div class="date-pill">${icon('calendar')} ${date}</div>`)}<div class="dashboard-grid">${renderPromo()}<article class="glass dash-categories"><div class="card-top"><h2>Khám phá theo loại di tích</h2>${icon('compass')}</div><p class="category-intro">Bạn muốn khám phá điều gì?</p><div class="category-choices">${[['Cung điện','building','Kiến trúc cung đình'],['Lăng tẩm','building','Dấu ấn các triều vua'],['Di tích','pin','Không gian văn hóa']].map(([type,ic,desc])=>`<button class="category-choice" data-explore-type="${type}"><span class="category-icon">${icon(ic)}</span><span><strong>${type}</strong><small>${desc}</small></span><span class="category-count">${places.filter(p=>p.type===type).length}</span>${icon('chevron')}</button>`).join('')}</div><button class="text-button" data-page="explore">Xem tất cả ${places.length} điểm đến ${icon('arrow')}</button></article><article class="glass dash-popular"><div class="card-top"><h2>Được tham quan nhiều nhất</h2>${icon('trend')}</div><p class="sample-label">XẾP HẠNG MINH HỌA</p><div class="popular-preview">${popularPlaces().slice(0,3).map((p,i)=>`<button class="popular-preview-row" data-detail="${p.id}"><span>0${i+1}</span><strong>${p.name}</strong>${icon('chevron')}</button>`).join('')}</div><button class="text-button" data-page="popular">Xem bảng xếp hạng ${icon('arrow')}</button></article><article class="glass weather-now" id="weather-compact">${weatherCompact()}</article><article class="glass weather-panel" id="weather-widget" aria-live="polite">${weatherWidget()}</article><article class="glass dash-route"><div class="card-top"><h2>Hành trình hôm nay</h2>${icon('route')}</div><h3>${active?active.name:'Bạn muốn đi đâu?'}</h3><p>${active?'Tuyến đang theo · bạn tự chuyển điểm dừng':'Chọn một tuyến mẫu để bắt đầu khám phá.'}</p><ol class="dash-stops">${(active||routes[0]).stops.map((id,i)=>`<li><span>${i+1}</span><button class="text-button" data-detail="${id}">${byId(id).name}</button>${active&&i===state.activeRoute.step?'<small>Hiện tại</small>':''}</li>`).join('')}</ol><button class="button small" data-page="routes">${active?'Tiếp tục hành trình':'Chọn tuyến tham quan'} ${icon('arrow')}</button></article><article class="glass dash-listen"><div><span class="eyebrow">GÓC LẮNG NGHE</span><h2>${byId(state.trackId).name}</h2><p>Nghe bản thuyết minh mẫu theo nhịp của bạn.</p></div><button class="icon-button dark" data-play aria-label="Phát hoặc tạm dừng thuyết minh">${icon(state.playing&&!state.paused?'pause':'play')}</button></article><article class="glass dash-shortcuts"><h2>Mọi thứ cho chuyến đi</h2><div><button class="outline-row" data-page="map">${icon('map')}<span>Bản đồ di sản</span>${icon('arrow')}</button><button class="outline-row" data-page="chat">${icon('chat')}<span>Hỏi đáp di sản</span>${icon('arrow')}</button></div></article></div>`}
+function renderHome(){const date=new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Asia/Ho_Chi_Minh'}).format(new Date());const active=state.activeRoute&&routes.find(r=>r.id===state.activeRoute.id);return `${header('Tổng quan','Một góc nhìn, trọn hành trình khám phá Huế.','HUE GUIDE · KHÔNG GIAN CỦA BẠN',`<div class="date-pill">${icon('calendar')} ${date}</div>`)}<div class="dashboard-grid">${renderPromo()}<article class="glass dash-categories"><div class="card-top"><h2>Khám phá theo loại di tích</h2>${icon('compass')}</div><p class="category-intro">Bạn muốn khám phá điều gì?</p><div class="category-choices">${[['Cung điện','building','Kiến trúc cung đình'],['Lăng tẩm','building','Dấu ấn các triều vua'],['Di tích','pin','Không gian văn hóa']].map(([type,ic,desc])=>`<button class="category-choice" data-explore-type="${type}"><span class="category-icon">${icon(ic)}</span><span><strong>${type}</strong><small>${desc}</small></span><span class="category-count">${places.filter(p=>p.type===type).length}</span>${icon('chevron')}</button>`).join('')}</div><button class="text-button" data-page="explore">Xem tất cả ${places.length} điểm đến ${icon('arrow')}</button></article><article class="glass dash-popular"><div class="card-top"><h2>Được tham quan nhiều nhất</h2>${icon('trend')}</div><p class="sample-label">XẾP HẠNG MINH HỌA</p><div class="popular-preview">${popularPlaces().slice(0,3).map((p,i)=>`<button class="popular-preview-row" data-detail="${p.id}"><span>0${i+1}</span><strong>${p.name}</strong>${icon('chevron')}</button>`).join('')}</div><button class="text-button" data-page="popular">Xem bảng xếp hạng ${icon('arrow')}</button></article><article class="glass weather-now" id="weather-compact">${weatherCompact()}</article><article class="glass weather-panel" id="weather-widget" aria-live="polite">${weatherWidget()}</article>${renderHomeRoutePreview()}<article class="glass dash-listen"><div><span class="eyebrow">GÓC LẮNG NGHE</span><h2>${byId(state.trackId).name}</h2><p>Nghe bản thuyết minh mẫu theo nhịp của bạn.</p></div><button class="icon-button dark" data-play aria-label="Phát hoặc tạm dừng thuyết minh">${icon(state.playing&&!state.paused?'pause':'play')}</button></article><article class="glass dash-shortcuts"><h2>Mọi thứ cho chuyến đi</h2><div><button class="outline-row" data-page="map">${icon('map')}<span>Bản đồ di sản</span>${icon('arrow')}</button><button class="outline-row" data-page="chat">${icon('chat')}<span>Hỏi đáp di sản</span>${icon('arrow')}</button></div></article></div>`}
 
 const popularSamples=[['dai-noi',12840],['khai-dinh',10360],['tu-duc',9180],['minh-mang',8640],['an-dinh',7250],['gia-long',4860],['dong-khanh',3940],['nam-giao',3260],['thieu-tri',2480],['duc-duc',1950]];
 icons.trend='<path d="m3 17 6-6 4 4 8-10M15 5h6v6"/>';
@@ -320,67 +351,347 @@ function renderMap(){
   </div></div>`;
 }
 
+// Coordinates are public route-stop data from PostgreSQL, NOT sample markers.
+function publicRouteDirectionsUrl(stops) {
+  if (!stops.length) return 'https://www.google.com/maps';
+  const point = stop => `${stop.latitude},${stop.longitude}`;
+  const params = new URLSearchParams({
+    api: '1', origin: point(stops[0]), destination: point(stops.at(-1)), travelmode: 'driving'
+  });
+  if (stops.length > 2) params.set('waypoints', stops.slice(1,-1).map(point).join('|'));
+  return 'https://www.google.com/maps/dir/?' + params.toString();
+}
+
+function renderHomeRoutePreview() {
+  const activeId = validPublicRouteId(state.activeRoute?.id);
+  const active = publicRouteApi.items.find(route => Number(route.id) === activeId);
+  const route = active || publicRouteApi.items[0];
+  if (!route) return `<article class="glass dash-route"><div class="card-top"><h2>Hành trình hôm nay</h2>${icon('route')}</div>
+    <h3>Chưa có tuyến tham quan công khai</h3><p>Hãy khám phá di tích hoặc quay lại khi có tuyến mới.</p>
+    <button class="button small" data-page="routes">Xem tuyến tham quan ${icon('arrow')}</button></article>`;
+  return `<article class="glass dash-route"><div class="card-top"><h2>Hành trình hôm nay</h2>${icon('route')}</div>
+    <h3>${esc(route.name)}</h3><p>${active?'Tuyến bạn đã bắt đầu':'Tuyến tham quan đã xuất bản từ Backend'}</p>
+    <p>${esc(route.description)}</p>
+    <button class="button small" data-page="routes">${active?'Tiếp tục hành trình':'Xem tuyến và điểm dừng'} ${icon('arrow')}</button></article>`;
+}
+
+// The existing Leaflet map page owns #hue-real-map; this dedicated map owns #public-route-map.
+const huePublicRouteMap = (() => {
+  let map = null;
+  let markers = [];
+  let currentStops = [];
+  let generation = 0;
+  let leafletPromise = null;
+  let routeAbort = null;
+  let userPositionMarker = null;
+  let routeBounds = null;
+  const geometryCache = new Map();
+
+  function currentStep(routeId, count) {
+    if (!count || validPublicRouteId(state.activeRoute?.id) !== Number(routeId)) return -1;
+    return Math.min(count - 1, Math.max(0, Number(state.activeRoute.step) || 0));
+  }
+
+  function destroy() {
+    generation += 1;
+    if (routeAbort) {routeAbort.abort(); routeAbort = null;}
+    if (map) {map.remove(); map = null;}
+    markers = [];
+    currentStops = [];
+    userPositionMarker = null;
+    routeBounds = null;
+  }
+  async function ensureLeaflet() {
+    if (window.L?.map) return;
+    if (leafletPromise) return leafletPromise;
+    leafletPromise = new Promise((resolve,reject) => {
+      if (!document.querySelector('link[data-hue-leaflet]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        link.dataset.hueLeaflet = '1';
+        document.head.appendChild(link);
+      }
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.async = true;
+      const timeout = setTimeout(() => reject(new Error('Timeout Leaflet')), 12000);
+      script.onload = () => {clearTimeout(timeout); window.L?.map ? resolve() : reject(new Error('Leaflet chưa sẵn sàng'));};
+      script.onerror = () => {clearTimeout(timeout); reject(new Error('Không tải được Leaflet'));};
+      document.head.appendChild(script);
+    }).catch(error => {leafletPromise = null; throw error;});
+    return leafletPromise;
+  }
+  function info(message) {
+    const node = document.querySelector('#public-route-map-notice');
+    if (node) node.textContent = message;
+  }
+  // Leaflet canvas renderer avoids the app's global `svg {width:20px;height:20px}`
+  // rule, which otherwise clips the road polyline to a tiny SVG viewport.
+  function drawRoad(L, coordinates, fallback=false) {
+    const renderer = L.canvas({padding:0.5});
+    if (!fallback) {
+      L.polyline(coordinates, {renderer, color:'#fff9e9',weight:12,opacity:0.99,
+        lineCap:'round',lineJoin:'round',interactive:false}).addTo(map);
+    }
+    L.polyline(coordinates, {renderer, color:fallback?'#765332':'#bc5528',
+      weight:fallback?5:7,opacity:0.99,interactive:false,
+      lineCap:'round',lineJoin:'round', ...(fallback?{dashArray:'9 9'}:{})}).addTo(map);
+  }
+  function showCurrentStep(routeId, stops) {
+    const index = currentStep(routeId, stops.length);
+    if (index < 0 || !map || !markers[index]) return;
+    // Selecting the next stop means selecting an itinerary step, not tracking GPS.
+    const stop = stops[index];
+    map.setView([stop.latitude,stop.longitude], 14, {animate:false});
+    markers[index].openPopup();
+  }
+  async function mount(stops, selectedRouteId) {
+    const run = generation;
+    const target = document.querySelector('#public-route-map');
+    if (!target || stops.length === 0) return;
+    currentStops = stops;
+    try {
+      await ensureLeaflet();
+      if (generation !== run || !target.isConnected) return;
+      const L = window.L;
+      const selectedStep = currentStep(selectedRouteId, stops.length);
+      target.textContent = '';
+      map = L.map(target, {scrollWheelZoom:false});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19, attribution:'&copy; OpenStreetMap contributors'
+      }).addTo(map);
+      markers = stops.map((stop,index) => {
+        const isCurrent = selectedStep === index;
+        const isPast = selectedStep > index;
+        const icon = L.divIcon({
+          className:'hue-route-pin-container',
+          html:`<span class="hue-route-pin ${isCurrent?'is-current':isPast?'is-passed':''}">${index+1}</span>`,
+          iconSize:[38,38], iconAnchor:[19,19], popupAnchor:[0,-19]
+        });
+        const marker = L.marker([stop.latitude,stop.longitude], {
+          icon, zIndexOffset:isCurrent?1000:0
+        }).addTo(map);
+        marker.bindPopup(`<strong>${index+1}. ${esc(stop.attraction_name || stop.attraction_slug || 'Điểm dừng')}</strong>` +
+          (isCurrent?'<p>Điểm đang chọn trong hành trình (không phải vị trí GPS).</p>':''));
+        return marker;
+      });
+      const bounds = L.latLngBounds(stops.map(stop => [stop.latitude,stop.longitude]));
+      routeBounds = bounds;
+      map.fitBounds(bounds, {padding:[35,35], maxZoom:15});
+      if (stops.length < 2) {
+        info('Bản đồ đang hiển thị vị trí điểm dừng.');
+        showCurrentStep(selectedRouteId,stops);
+        return;
+      }
+      const key = `${selectedRouteId}:${stops.map(s=>`${s.longitude},${s.latitude}`).join(';')}`;
+      let driving = geometryCache.get(key);
+      try {
+        if (!driving) {
+          info('Đang lấy đường ô tô từ dịch vụ OSRM…');
+          const controller = new AbortController();
+          routeAbort = controller;
+          const timeout = setTimeout(() => controller.abort(), 15000);
+          try {
+            const coordinates = stops.map(s => `${s.longitude},${s.latitude}`).join(';');
+            const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`, {signal:controller.signal});
+            if (!response.ok) throw new Error(`OSRM HTTP ${response.status}`);
+            const data = await response.json();
+            const first = data.routes?.[0];
+            if (data.code !== 'Ok' || first?.geometry?.type !== 'LineString' ||
+                !Array.isArray(first.geometry.coordinates) || first.geometry.coordinates.length < 2) {
+              throw new Error('OSRM không tìm được tuyến đường hợp lệ');
+            }
+            driving = {coordinates:first.geometry.coordinates,
+              distance:Number(first.distance),duration:Number(first.duration)};
+            geometryCache.set(key, driving);
+          } finally {
+            clearTimeout(timeout);
+            if (routeAbort === controller) routeAbort = null;
+          }
+        }
+        if (generation !== run || !map) return;
+        const latLngs = driving.coordinates.map(pair=>[Number(pair[1]),Number(pair[0])]);
+        if (!latLngs.every(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]))) throw Error('Tọa độ OSRM không hợp lệ');
+        drawRoad(L,latLngs);
+        routeBounds = L.latLngBounds(latLngs);
+        map.fitBounds(routeBounds, {padding:[35,35],maxZoom:15});
+        const km=Number.isFinite(driving.distance)?(driving.distance/1000).toFixed(1):'?';
+        const mins=Number.isFinite(driving.duration)?Math.round(driving.duration/60):'?';
+        info(`Đường màu cam: ô tô OSRM ước tính ${km} km · khoảng ${mins} phút (chưa tính tham quan, giao thông).`);
+      } catch (error) {
+        if (generation !== run || !map) return;
+        console.warn('[Public Route OSRM]',error);
+        // Distinguish the straight-line fallback from a drivable route.
+        drawRoad(L,stops.map(stop=>[stop.latitude,stop.longitude]),true);
+        info('Đường nét đứt chỉ nối các điểm dừng, KHÔNG phải đường ô tô. Chọn “Mở chỉ đường ô tô” để xem lộ trình thực tế.');
+      }
+      showCurrentStep(selectedRouteId,stops);
+    } catch (error) {
+      if (generation !== run) return;
+      console.warn('[Public Route Map]', error);
+      if (!map && target.isConnected) {
+        target.innerHTML = '<div class="public-route-map-fallback">Chưa tải được bản đồ tương tác. Dùng nút “Mở chỉ đường ô tô” ở phía trên.</div>';
+      }
+      info('Chưa tải được bản đồ. Bạn vẫn có thể mở Google Maps để xem đường đi.');
+    }
+  }
+  function focus(index) {
+    const stop = currentStops[index];
+    if (!stop || !map || !markers[index]) return;
+    map.setView([stop.latitude,stop.longitude],15,{animate:false});
+    markers[index].openPopup();
+  }
+  function fitAll() {
+    if (!map || !routeBounds) return;
+    map.fitBounds(routeBounds,{padding:[35,35],maxZoom:15});
+  }
+  function showLocation(coords) {
+    const latitude=Number(coords.latitude),longitude=Number(coords.longitude);
+    if (!map || !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+        Math.abs(latitude)>90 || Math.abs(longitude)>180) return false;
+    const L=window.L;
+    if (userPositionMarker) map.removeLayer(userPositionMarker);
+    userPositionMarker=L.marker([latitude,longitude],{
+      icon:L.divIcon({className:'hue-route-gps-container',
+        html:'<span class="hue-route-gps-point" title="Vị trí thiết bị">●</span>',
+        iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-13]}),
+      zIndexOffset:2000
+    }).addTo(map);
+    userPositionMarker.bindPopup('Vị trí thiết bị (ước tính theo GPS/trình duyệt), khác với điểm dừng trong hành trình.').openPopup();
+    map.setView([latitude,longitude],14,{animate:false});
+    return true;
+  }
+  return {mount,destroy,focus,fitAll,showLocation};
+})();
+
+function locatePublicRouteUser() {
+  if (!navigator.geolocation) {toast('Trình duyệt không hỗ trợ GPS.');return;}
+  const button=document.querySelector('#public-route-locate-me');
+  if(button){button.disabled=true;button.textContent='Đang lấy vị trí…';}
+  navigator.geolocation.getCurrentPosition(position=>{
+    if(button?.isConnected){button.disabled=false;button.textContent='Vị trí của tôi (GPS)';}
+    if(!huePublicRouteMap.showLocation(position.coords)){
+      toast('Bản đồ chưa sẵn sàng. Bạn thử lại nhé.');return;
+    }
+    toast('Đã hiển thị vị trí thiết bị ước tính. Không lưu lịch sử GPS.');
+  },()=>{
+    if(button?.isConnected){button.disabled=false;button.textContent='Vị trí của tôi (GPS)';}
+    toast('Không lấy được vị trí. Hãy cho phép định vị trong trình duyệt nếu muốn sử dụng.');
+  },{enableHighAccuracy:true,timeout:12000,maximumAge:15000});
+}
+
+function injectPublicRouteStyles() {
+  if (document.querySelector('#hue-public-route-css')) return;
+  const style = document.createElement('style');
+  style.id = 'hue-public-route-css';
+  style.textContent = `
+    .route-choice {cursor:pointer;display:block;color:inherit;font:inherit;background:transparent;border:1px solid #d6b88e;border-radius:24px}
+    .route-choice:hover, .route-choice:focus-visible,.route-choice.active {background:#fff6e7;border-color:#9d7448;outline-offset:2px}
+    .route-choice h2 {font-size:17px;font-weight:700;color:#503923}
+    .route-choice p {font-size:12px;line-height:1.6;color:#765a40}
+    .route-detail {padding:26px;min-width:0}
+    .route-detail > p {font-size:13px;line-height:1.7;color:#74583c}
+    .route-journey-actions {display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0}
+    .route-journey-stops {padding-left:0;list-style:none;margin:18px 0}
+    .route-journey-stops li {display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;padding:14px 0;border-bottom:1px solid #d9c6a9}
+    .route-journey-stops .step-number {background:#e6d4b8;width:33px;height:33px;border-radius:50%;display:grid;place-items:center;color:#64472c;font-weight:bold}
+    .route-journey-stops li.current .step-number {background:#6d4b30;color:#fff}
+    .route-journey-stops strong {display:block;color:#4a3422;font-size:14px;margin-bottom:6px}
+    .route-journey-stops small {display:block;color:#806345;font-size:12px;line-height:1.6}
+    .route-journey-stops button {margin-top:6px}
+    .route-journey-meta {display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+    .route-journey-meta span {border:1px solid #dec7a9;padding:7px 11px;border-radius:30px;color:#694a2c;font-size:12px}
+    #public-route-map {height:350px;width:100%;border-radius:17px;border:1px solid #d9bd93;overflow:hidden;background:#e8dfcf;margin-top:15px}
+    #public-route-map-notice {color:#6c5238;font-size:12px;line-height:1.7;margin:12px 0}
+    .public-route-map-fallback {display:grid;place-items:center;text-align:center;padding:30px;height:100%;font-size:13px;color:#6b513a}
+    .route-journey-actions a.button {text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+    .route-progress-notice {margin-top:12px;color:#695037;font-size:13px}
+    .route-map-guide {display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 5px;font-size:12px;color:#674931}
+    .route-map-guide strong {background:#f0d9b4;border:1px solid #c9995e;border-radius:14px;padding:7px 11px}
+    .route-map-guide small {font-size:11px;color:#7a6148}
+    .route-map-tools {display:flex;gap:8px;flex-wrap:wrap;margin:9px 0}
+    /* Never apply global 20px SVG icon dimensions to Leaflet route geometry. */
+    #public-route-map .leaflet-overlay-pane svg {width:auto;height:auto;max-width:none;max-height:none}
+    #public-route-map .hue-route-pin-container,#public-route-map .hue-route-gps-container {border:0;background:transparent}
+    #public-route-map .hue-route-pin {box-sizing:border-box;display:grid;place-items:center;width:38px;height:38px;
+      border-radius:50%;border:3px solid #fff9ed;background:#8b7454;color:#fff;font-size:16px;font-weight:800;
+      box-shadow:0 3px 10px #321b17a0}
+    #public-route-map .hue-route-pin.is-passed {background:#867f70}
+    #public-route-map .hue-route-pin.is-current {background:#b65327;border-color:#fff;
+      outline:4px solid #f1c26e;box-shadow:0 0 0 7px #fff5e7bb,0 4px 15px #321b17a0}
+    #public-route-map .hue-route-gps-point {display:grid;place-items:center;width:30px;height:30px;
+      border-radius:50%;border:4px solid white;background:#2777cf;color:#2777cf;box-shadow:0 2px 12px #164f9a90}
+
+    @media (max-width:900px){.route-page{grid-template-columns:1fr}.route-detail{padding:18px}#public-route-map{height:290px}}
+  `;
+  document.head.appendChild(style);
+}
+
 function renderRoutes() {
-  const heading = header(
-    "Chọn một hành trình.",
-    "Khám phá những tuyến tham quan đã được xuất bản tại Huế."
-  );
-
-  if (publicRouteApi.status === "loading") {
-    return `${heading}
-      <article class="glass route-detail">
-        <h2>Đang tải tuyến tham quan...</h2>
-        <p>Hệ thống đang kết nối Backend.</p>
-      </article>`;
-  }
-
-  if (publicRouteApi.status === "error") {
-    return `${heading}
-      <article class="glass route-detail">
-        <h2>Không thể tải tuyến tham quan</h2>
-        <p>${esc(publicRouteApi.message)}</p>
-      </article>`;
-  }
-
-  if (publicRouteApi.items.length === 0) {
-    return `${heading}
-      <article class="glass route-detail">
-        <p class="eyebrow">TUYẾN THAM QUAN</p>
-        <h2>Chưa có tuyến được xuất bản</h2>
-        <p>
-          Các tuyến tham quan hiện đang được biên tập
-          và xác minh trước khi công khai.
-        </p>
-        <div class="notice">
-          Hệ thống chỉ hiển thị tuyến tham quan đã được
-          phê duyệt và xuất bản từ PostgreSQL.
-        </div>
-      </article>`;
-  }
-
-  return `${heading}
-    <div class="route-page">
-      <div class="route-choices">
-        ${publicRouteApi.items.map(route => `
-          <article class="glass route-choice">
-            <span class="tag">
-              ${Number(route.estimated_minutes)} phút dự kiến
-            </span>
-            <h2>${esc(route.name)}</h2>
-            <p>${esc(route.description)}</p>
-          </article>
-        `).join("")}
+  const heading = header('Chọn một hành trình.', 'Khám phá các tuyến đã được xuất bản tại Huế.');
+  if (publicRouteApi.status === 'loading') return `${heading}<article class="glass route-detail"><h2>Đang tải tuyến tham quan…</h2></article>`;
+  if (publicRouteApi.status === 'error') return `${heading}<article class="glass route-detail"><h2>Không thể tải tuyến tham quan</h2><p>${esc(publicRouteApi.message)}</p><button class="button small" id="retry-public-routes">Thử lại</button></article>`;
+  if (!publicRouteApi.items.length) return `${heading}<article class="glass route-detail"><h2>Chưa có tuyến được xuất bản</h2><p>Các tuyến đang được biên tập và xác minh trước khi công khai.</p></article>`;
+  const selectedId = publicRouteApi.selectedId;
+  const route = publicRouteApi.detailStatus === 'ready' ? publicRouteApi.detail : null;
+  const isActive = route && validPublicRouteId(state.activeRoute?.id) === Number(route.id);
+  const index = isActive ? Math.min(route.stops.length - 1, Math.max(0,Number(state.activeRoute.step)||0)) : -1;
+  const listHtml = publicRouteApi.items.map(item => `
+    <button type="button" class="glass route-choice ${Number(item.id) === selectedId ? 'active' : ''}"
+      data-public-route-select="${Number(item.id)}" aria-pressed="${Number(item.id) === selectedId}">
+      <span class="tag">${Number.isFinite(Number(item.estimated_minutes)) ? Number(item.estimated_minutes)+' phút dự kiến' : 'Đang cập nhật thời gian'}</span>
+      <h2>${esc(item.name)}</h2><p>${esc(item.description)}</p>
+      <small>Chọn để xem điểm dừng ${icon('arrow')}</small>
+    </button>`).join('');
+  let details = '';
+  if (publicRouteApi.detailStatus === 'loading') {
+    details = '<h2>Đang tải chi tiết tuyến…</h2><p>Đang lấy điểm dừng từ PostgreSQL.</p>';
+  } else if (publicRouteApi.detailStatus === 'error') {
+    details = `<h2>Không tải được chi tiết tuyến</h2><p>${esc(publicRouteApi.detailMessage)}</p><button class="button small" data-public-route-retry="${selectedId}">Thử lại</button>`;
+  } else if (route) {
+    const stops = route.stops;
+    const directionsHref = publicRouteDirectionsUrl(stops);
+    const startedText = isActive && stops[index] ? `Điểm đang chọn ${index+1}/${stops.length}: ${esc(stops[index].attraction_name || stops[index].attraction_slug)} (theo hành trình, không phải GPS)` : '';
+    details = `
+      <p class="eyebrow">TUYẾN ĐÃ XUẤT BẢN</p>
+      <h2>${esc(route.name)}</h2>
+      <p>${esc(route.description)}</p>
+      <div class="route-journey-meta"><span>${stops.length} điểm dừng</span>
+      <span>${Number(route.estimated_minutes) || 0} phút dự kiến</span><span>Phương tiện: ô tô</span></div>
+      <div class="route-journey-actions">
+        ${!stops.length ? '' : isActive ? `
+          <button class="button small" id="next-public-stop">${index === stops.length-1 ? 'Hoàn thành hành trình' : 'Điểm tiếp theo'} ${icon('arrow')}</button>
+          <button class="button outline small" id="end-public-route">Kết thúc</button>` : `
+          <button class="button small" id="start-public-route">${icon('route')} Bắt đầu hành trình</button>`}
+        ${stops.length > 1 ? `<a class="button outline small" href="${esc(directionsHref)}" target="_blank" rel="noopener noreferrer">Mở chỉ đường ô tô ${icon('external')}</a>` : ''}
       </div>
-
-      <article class="glass route-detail">
-        <h2>Tuyến tham quan đã xuất bản</h2>
-        <p>
-          Danh sách được tải trực tiếp từ Backend.
-          Chi tiết điểm dừng và chỉ đường ô tô
-          sẽ được tích hợp ở bước tiếp theo.
-        </p>
-      </article>
-    </div>`;
+      ${startedText ? `<p class="route-progress-notice" role="status">${startedText}</p>` : ''}
+      <h3>Điểm dừng (${stops.length})</h3>
+      <ol class="route-journey-stops">${stops.map((stop,i) => `
+        <li class="${index===i?'current':''}"><span class="step-number">${i+1}</span><div>
+          <strong>${esc(stop.attraction_name || stop.attraction_slug || 'Di tích')}</strong>
+          <small>Tham quan: ${stop.visit_minutes == null ? 'Chưa xác định' : stop.visit_minutes+' phút'}
+          ${i===0 ? ' · Điểm xuất phát' : ` · Di chuyển từ điểm trước: ${stop.travel_minutes_from_previous == null ? 'Chưa xác định' : stop.travel_minutes_from_previous+' phút (lịch trình)'}`}</small>
+          <button type="button" class="text-button" data-public-stop-focus="${i}">Xem trên bản đồ ${icon('pin')}</button>
+          <a class="text-button" href="https://www.openstreetmap.org/?mlat=${stop.latitude}&mlon=${stop.longitude}#map=16/${stop.latitude}/${stop.longitude}" target="_blank" rel="noopener noreferrer">Mở vị trí ${icon('external')}</a>
+        </div></li>`).join('')}</ol>
+      <h3>Bản đồ và đường đi</h3>
+      <div class="route-map-guide" role="status">
+        ${isActive && stops[index] ? `<strong>Điểm hiện tại trên hành trình: ${index+1}. ${esc(stops[index].attraction_name || stops[index].attraction_slug)}</strong>` : '<strong>Chưa bắt đầu hành trình</strong>'}
+        <small>Ghim màu cam = điểm đang chọn · ghim xanh = vị trí thiết bị (khi cho phép GPS).</small>
+      </div>
+      <div class="route-map-tools">
+        <button class="button outline small" id="public-route-fit-all">${icon('map')} Xem toàn tuyến</button>
+        ${isActive ? `<button class="button outline small" id="public-route-focus-current">Xem điểm đang chọn ${icon('pin')}</button>` : ''}
+        <button class="button outline small" id="public-route-locate-me">${icon('pin')} Vị trí của tôi (GPS)</button>
+      </div>
+      ${stops.length ? '<div id="public-route-map" role="region" aria-label="Bản đồ các điểm dừng của tuyến">Đang tải bản đồ…</div>' : '<p>Chưa có điểm dừng để hiển thị.</p>'}
+      ${stops.length ? '<p id="public-route-map-notice">Tọa độ tham khảo; cần kiểm tra cổng vào và điều kiện đường đi thực tế.</p>' : ''}
+      <div class="notice">Thời gian tham quan do Ban quản trị cung cấp. Đường ô tô OSRM chỉ là ước tính; hãy kiểm tra lối vào, đường cấm và giao thông trước khi đi.</div>`;
+  } else details = '<h2>Chọn một tuyến để xem chi tiết</h2>';
+  return `${heading}<div class="route-page"><div class="route-choices">${listHtml}</div>
+    <article class="glass route-detail">${details}</article></div>`;
 }
 
 function renderAudio(){const p=byId(state.trackId);return `${header('Lắng nghe câu chuyện Huế.','Bấm phát để nghe bản đọc thử. Âm thanh luôn do bạn chủ động điều khiển.')}<div class="audio-layout"><section class="audio-feature ${state.playing&&!state.paused?'playing':''}"><div class="section-line"><span>${icon('headphones')} THUYẾT MINH</span><label class="audio-language-label" for="audio-language">Ngôn ngữ thuyết minh<select id="audio-language" aria-label="Ngôn ngữ thuyết minh"><option value="vi-VN" ${state.audioLanguage==='vi-VN'?'selected':''}>Tiếng Việt</option><option value="en-US" ${state.audioLanguage==='en-US'?'selected':''}>English</option></select></label></div><div class="audio-art">${icon('building')}</div><h2>${p.name}</h2><p id="play-status">${state.playing?(state.paused?'Đã tạm dừng':'Đang đọc nội dung'):'Sẵn sàng lắng nghe'}</p><div class="transport"><button id="audio-restart" aria-label="Đọc lại từ đầu">${icon('route')}</button><button class="play-main" data-play aria-label="Phát hoặc tạm dừng">${icon(state.playing&&!state.paused?'pause':'play')}</button><button id="audio-stop" aria-label="Dừng thuyết minh">${icon('stop')}</button></div><div class="progress-track"><span id="audio-progress" style="--progress:${state.progress}%"></span></div><div class="time-row"><span id="audio-elapsed">${formatTime(state.elapsed)}</span><span>Giọng đọc của trình duyệt</span></div></section><div><article class="glass transcript"><div class="card-top"><h2>Nội dung thuyết minh</h2>${icon('book')}</div><p>${state.audioLanguage==='vi-VN'?p.text:p.en}</p><button class="text-button" data-detail="${p.id}">Thông tin di tích ${icon('arrow')}</button><div class="notice">Bản đọc mẫu dùng chức năng chuyển văn bản thành giọng nói của trình duyệt. Giọng đọc phụ thuộc thiết bị. Không phải tệp thuyết minh chính thức.</div></article><div class="audio-library">${places.slice(0,6).map(p=>`<button class="track ${p.id===state.trackId?'active':''}" data-track="${p.id}">${icon('headphones')}<span><strong>${p.name}</strong><small>Bản thuyết minh mẫu</small></span></button>`).join('')}</div></div></div>`}
@@ -406,7 +717,494 @@ function renderAdminContent(){
   }).join('')}</tbody></table>${rows.length?'':`<div class="empty">${attractionApi.staffStatus==='ready'?'Không có di tích phù hợp bộ lọc.':'Chưa tải được danh sách Staff API.'}</div>`}</section>
   <div class="notice" role="status">${esc(notice)}</div>`;
 }
-const adminTabs=[['dashboard','home','Dashboard'],['content','book','Quản lý nội dung'],['reports','compass','Báo cáo thống kê'],['tasks','calendar','Công việc']];
+// M2.1: Staff routes are loaded from the authenticated backend; never from sample routes.
+const staffRouteApi = { status: 'idle', items: [], error: '', requestId: 0 };
+const staffRouteStatuses = {
+  draft: 'Bản nháp',
+  in_review: 'Chờ duyệt',
+  published: 'Đã xuất bản',
+  archived: 'Đã lưu trữ'
+};
+
+function staffRouteStatus(status) {
+  return staffRouteStatuses[status] || String(status || 'Không rõ');
+}
+
+// The route is only eligible for review after every selected stop has valid
+// timing data. The Backend independently validates review and publication.
+function staffRouteReviewTimingReady(route, stops) {
+  const estimated = Number(route?.estimated_minutes);
+  if (!Number.isSafeInteger(estimated) || estimated <= 0 || !Array.isArray(stops) || !stops.length) return false;
+  let total = 0;
+  const ids = new Set();
+  for (let i = 0; i < stops.length; i++) {
+    const stop = stops[i];
+    const id = Number(stop.attraction_id);
+    const visit = Number(stop.visit_minutes);
+    if (!Number.isSafeInteger(id) || id <= 0 || ids.has(id) ||
+        stop.visit_minutes == null || !Number.isSafeInteger(visit) || visit <= 0) return false;
+    ids.add(id);
+    total += visit;
+    if (i === 0) {
+      if (stop.travel_minutes_from_previous != null) return false;
+    } else {
+      const travel = Number(stop.travel_minutes_from_previous);
+      if (stop.travel_minutes_from_previous == null || !Number.isSafeInteger(travel) || travel < 0) return false;
+      total += travel;
+    }
+  }
+  return total <= estimated;
+}
+
+// Approval records verified_at but keeps the route in_review; publication is
+// a separate, explicit decision and never happens automatically.
+function renderStaffRouteWorkflowActions(route, stops) {
+  const id = Number(route.id);
+  const complete = staffRouteReviewTimingReady(route, stops);
+  const action = (value, label, primary=false, disabled=false) =>
+    `<button type="button" class="button ${primary ? '' : 'outline'} small" data-staff-route-workflow="${value}" data-route-id="${id}" ${disabled ? 'disabled' : ''}>${label}</button>`;
+  let buttons = '';
+  let guide = '';
+  if (route.status === 'draft') {
+    buttons = action('submit', 'Gửi duyệt', true, !complete);
+    guide = complete
+      ? 'Sau khi gửi duyệt, Editor không thể sửa tuyến đến khi được trả về bản nháp.'
+      : 'Chưa thể gửi duyệt: cần có điểm dừng, thời gian tham quan/di chuyển hợp lệ và tổng thời gian không vượt lịch trình.';
+  } else if (route.status === 'in_review' && !route.verified_at) {
+    buttons = action('approve', 'Phê duyệt / ghi nhận xác minh', true) +
+      action('reject', 'Trả về bản nháp');
+    guide = 'Phê duyệt sẽ ghi nhận xác minh tuyến. Chỉ phê duyệt sau khi kiểm tra điểm dừng, lối vào và thời gian dự kiến; cần quyền Reviewer hoặc Admin.';
+  } else if (route.status === 'in_review' && route.verified_at) {
+    buttons = action('publish', 'Xuất bản lên User', true) +
+      action('reject', 'Trả về bản nháp');
+    guide = 'Tuyến đã có ghi nhận xác minh. Xuất bản là thao tác riêng và chỉ được thực hiện khi tất cả điều kiện Backend đều đạt.';
+  } else if (route.status === 'published') {
+    guide = 'Tuyến đã được xuất bản. Chỉnh sửa sẽ đưa tuyến về bản nháp để duyệt lại.';
+  } else {
+    guide = 'Trạng thái này chưa hỗ trợ thao tác duyệt hoặc xuất bản từ giao diện.';
+  }
+  return `<div class="notice" role="status">${esc(guide)}</div>
+    ${buttons ? `<div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap">${buttons}</div>` : ''}
+    <p id="staff-route-workflow-message" role="alert" class="admin-muted" aria-live="polite"></p>`;
+}
+
+async function loadStaffRoutesFromBackend() {
+  if (!IS_ADMIN) return;
+  const currentRequest = ++staffRouteApi.requestId;
+  staffRouteApi.status = 'loading';
+  staffRouteApi.error = '';
+  if (state.page === 'admin' && state.adminTab === 'routes') render();
+  try {
+    const payload = await fetchJson('/api/v1/staff/routes');
+    if (!Array.isArray(payload?.data)) {
+      throw new Error('Danh sách tuyến từ Staff API không đúng định dạng');
+    }
+    if (currentRequest !== staffRouteApi.requestId) return;
+    staffRouteApi.items = payload.data.filter(route =>
+      Number.isSafeInteger(Number(route.id)) && Number(route.id) > 0
+    );
+    staffRouteApi.status = 'ready';
+  } catch (error) {
+    if (currentRequest !== staffRouteApi.requestId) return;
+    staffRouteApi.status = 'error';
+    staffRouteApi.error = 'Không tải được danh sách tuyến. Kiểm tra Backend và phiên đăng nhập Staff.';
+    console.error('[Staff Routes]', error);
+  } finally {
+    if (currentRequest === staffRouteApi.requestId &&
+        state.page === 'admin' && state.adminTab === 'routes') render();
+  }
+}
+
+function renderAdminRoutes() {
+  const title = header(
+    'Quản lý tuyến tham quan',
+    'Danh sách và nội dung tuyến lấy trực tiếp từ Staff API và PostgreSQL.',
+    'HUE GUIDE / ADMIN'
+  );
+  const actions = `<div class="filters">
+    <button class="button small" id="staff-route-create">${icon('route')} Thêm tuyến mới</button>
+    <button class="button outline small" id="staff-route-refresh" ${staffRouteApi.status === 'loading' ? 'disabled' : ''}>Làm mới</button>
+    <label for="staff-route-filter">Trạng thái</label>
+    <select id="staff-route-filter" aria-label="Lọc trạng thái tuyến">
+      ${[['all','Tất cả'], ['draft','Bản nháp'], ['in_review','Chờ duyệt'], ['published','Đã xuất bản'], ['archived','Đã lưu trữ']]
+        .map(([value,label])=>`<option value="${value}" ${state.staffRouteFilter === value ? 'selected' : ''}>${label}</option>`).join('')}
+    </select>
+  </div>`;
+  if (staffRouteApi.status === 'idle' || staffRouteApi.status === 'loading') {
+    return `${title}${actions}<article class="admin-card" role="status"><h2>Đang tải tuyến tham quan…</h2><p>Đang đọc dữ liệu quản lý từ Backend.</p></article>`;
+  }
+  if (staffRouteApi.status === 'error') {
+    return `${title}${actions}<article class="admin-card" role="alert"><h2>Chưa tải được danh sách tuyến</h2><p>${esc(staffRouteApi.error)}</p></article>`;
+  }
+  const rows = staffRouteApi.items.filter(route =>
+    state.staffRouteFilter === 'all' || route.status === state.staffRouteFilter
+  );
+  const count = staffRouteApi.items.length;
+  return `${title}${actions}
+    <article class="admin-card">
+      <div class="card-top"><h2>Tuyến trong PostgreSQL</h2><span>${count} tuyến · ${rows.length} đang hiển thị</span></div>
+      <p class="admin-muted">Gồm cả bản nháp và tuyến chờ duyệt. Chỉ tuyến đã xuất bản mới hiển thị trên trang User.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Tuyến tham quan</th><th>Thời gian dự kiến</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody>${rows.map(route => {
+          const id = Number(route.id);
+          const minutes = Number(route.estimated_minutes);
+          const editable = route.status === 'draft' || route.status === 'published';
+          return `<tr>
+            <td>#${id}</td>
+            <td><strong>${esc(route.name_vi || route.slug)}</strong><div class="admin-muted">${esc(route.slug)}</div></td>
+            <td>${Number.isSafeInteger(minutes) && minutes > 0 ? minutes + ' phút' : 'Chưa có'}</td>
+            <td><span class="status">${esc(staffRouteStatus(route.status))}</span>${route.status === 'in_review' && route.verified_at ? '<div class="admin-muted">Đã ghi nhận xác minh</div>' : ''}</td>
+            <td><button class="text-button" data-staff-route-detail="${id}">Chi tiết ${icon('arrow')}</button>
+            ${editable ? `<button class="text-button" data-staff-route-edit="${id}">Sửa</button>` : ''}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+      ${rows.length ? '' : '<div class="empty"><p>Không có tuyến nào phù hợp bộ lọc.</p></div>'}
+    </article>
+    <div class="notice" role="status">Danh sách và trạng thái lấy từ Staff API. Thêm/sửa chỉ ghi qua API có xác thực và CSRF. Điểm dừng được chọn từ di tích đã xuất bản trong PostgreSQL. Gửi duyệt / phê duyệt / xuất bản được xử lý tại Chi tiết tuyến; lưu trữ sẽ tích hợp ở bước sau.</div>`;
+}
+
+// Only published attractions are offered as new route stops. Names and IDs
+// are read from PostgreSQL via the public API, never from the demo array.
+const staffRouteStopCatalog = { items: [], ready: false };
+let staffRouteFormOriginal = null;
+
+async function loadStaffRouteStopCatalog() {
+  if (staffRouteStopCatalog.ready) return staffRouteStopCatalog.items;
+  const all = [];
+  for (let page = 1; page <= 100; page++) {
+    const payload = await fetchJson(`/api/v1/attractions?language=vi&page=${page}&page_size=100`);
+    if (!Array.isArray(payload?.data)) throw new Error('Danh sách di tích công khai không hợp lệ');
+    all.push(...payload.data);
+    const totalPages = Number(payload.pagination?.total_pages ?? 1);
+    if (!Number.isInteger(totalPages) || totalPages < 0 || totalPages > 100) {
+      throw new Error('Phân trang danh sách di tích không hợp lệ');
+    }
+    if (page >= totalPages) break;
+  }
+  const seen = new Set();
+  const items = all.map(item => ({
+    id: Number(item.id ?? item.attraction_id),
+    name: cleanApiText(item.name || item.slug || '', 255),
+    slug: cleanApiText(item.slug || '', 255)
+  })).filter(item => {
+    if (!Number.isSafeInteger(item.id) || item.id <= 0 || !item.name || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+  items.sort((a,b) => a.name.localeCompare(b.name, 'vi'));
+  staffRouteStopCatalog.items = items;
+  staffRouteStopCatalog.ready = true;
+  return items;
+}
+
+function staffRouteStopEditorRow(stop, index, total) {
+  const id = Number(stop.attraction_id) || 0;
+  const known = staffRouteStopCatalog.items.some(item => item.id === id);
+  const options = `<option value="">-- Chọn di tích --</option>` +
+    (!known && id ? `<option value="${id}" selected>Di tích #${id} (chưa xuất bản / không khả dụng)</option>` : '') +
+    staffRouteStopCatalog.items.map(item =>
+      `<option value="${item.id}" ${item.id === id ? 'selected' : ''}>${esc(item.name)} (#${item.id})</option>`
+    ).join('');
+  const visit = stop.visit_minutes == null ? '' : String(stop.visit_minutes);
+  const travel = index === 0 ? '' : (stop.travel_minutes_from_previous == null ? '' : String(stop.travel_minutes_from_previous));
+  return `<div class="staff-route-stop-row" data-stop-index="${index}" style="border:1px solid #d7bc94;border-radius:14px;padding:12px;margin:12px 0;background:#fff8ec">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <strong>Điểm dừng ${index+1}</strong>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="button outline small" type="button" data-staff-stop-up="${index}" ${index===0?'disabled':''} aria-label="Chuyển điểm dừng ${index+1} lên">↑</button>
+        <button class="button outline small" type="button" data-staff-stop-down="${index}" ${index===total-1?'disabled':''} aria-label="Chuyển điểm dừng ${index+1} xuống">↓</button>
+        <button class="button outline small" type="button" data-staff-stop-remove="${index}" ${total===1?'disabled':''}>Bỏ</button>
+      </div>
+    </div>
+    <label>Di tích</label>
+    <select data-route-attraction required style="width:100%;padding:12px;border:1px solid #ceb08f;border-radius:12px;background:#fff8e9;color:#553b23">${options}</select>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px">
+      <div><label>Tham quan (phút)</label><input data-route-visit type="number" min="1" step="1" required value="${esc(visit)}" placeholder="Ví dụ: 60"></div>
+      <div><label>Di chuyển từ điểm trước (phút)</label><input data-route-travel type="number" min="0" step="1" ${index===0?'disabled':'required'} value="${esc(travel)}" placeholder="${index===0?'Điểm khởi đầu':'Nhập phút di chuyển'}"></div>
+    </div>
+  </div>`;
+}
+
+function staffRouteRawStops(form) {
+  return [...form.querySelectorAll('.staff-route-stop-row')].map((row, index) => ({
+    attraction_id: row.querySelector('[data-route-attraction]')?.value || '',
+    visit_minutes: row.querySelector('[data-route-visit]')?.value ?? '',
+    travel_minutes_from_previous: index === 0 ? null : (row.querySelector('[data-route-travel]')?.value ?? '')
+  }));
+}
+
+function renderStaffRouteStopRows(form, stops) {
+  const target = form.querySelector('#staff-route-stops');
+  if (!target) return;
+  target.innerHTML = stops.map((stop,index) => staffRouteStopEditorRow(stop,index,stops.length)).join('');
+  const counter = form.querySelector('#staff-route-stop-count');
+  if (counter) counter.textContent = `${stops.length} điểm dừng đã chọn`;
+  refreshStaffRouteStopSummary(form);
+}
+
+function refreshStaffRouteStopSummary(form) {
+  const node = form.querySelector('#staff-route-time-summary');
+  if (!node) return;
+  const rows = staffRouteRawStops(form);
+  const visit = rows.reduce((sum,stop) => sum + (Number(stop.visit_minutes) || 0),0);
+  const travel = rows.slice(1).reduce((sum,stop) => sum + (Number(stop.travel_minutes_from_previous) || 0),0);
+  const estimate = Number(form.querySelector('[name="estimated_minutes"]')?.value || 0);
+  const used = visit + travel;
+  node.textContent = `Dự kiến tại điểm dừng: ${visit} phút · Di chuyển: ${travel} phút · Tổng: ${used} / ${estimate || '—'} phút${estimate && used > estimate ? ' (vượt thời gian tuyến)' : ''}.`;
+}
+
+function validatedStaffRouteStops(form, estimatedMinutes) {
+  const raw = staffRouteRawStops(form);
+  if (!raw.length) throw new Error('Tuyến cần ít nhất một điểm dừng.');
+  const seen = new Set();
+  const available = new Set(staffRouteStopCatalog.items.map(item => item.id));
+  const stops = raw.map((stop,i) => {
+    const attractionId = Number(stop.attraction_id);
+    if (!Number.isSafeInteger(attractionId) || attractionId <= 0 || !available.has(attractionId)) {
+      throw new Error(`Điểm dừng ${i+1}: hãy chọn di tích đã xuất bản từ danh sách.`);
+    }
+    if (seen.has(attractionId)) throw new Error(`Di tích ở điểm dừng ${i+1} đã được chọn trước đó.`);
+    seen.add(attractionId);
+    const visit = Number(stop.visit_minutes);
+    if (!stop.visit_minutes || !Number.isSafeInteger(visit) || visit <= 0) {
+      throw new Error(`Điểm dừng ${i+1}: thời gian tham quan phải lớn hơn 0.`);
+    }
+    let travel = null;
+    if (i > 0) {
+      travel = Number(stop.travel_minutes_from_previous);
+      if (stop.travel_minutes_from_previous === '' || !Number.isSafeInteger(travel) || travel < 0) {
+        throw new Error(`Điểm dừng ${i+1}: nhập phút di chuyển (có thể bằng 0).`);
+      }
+    }
+    return { attraction_id: attractionId, stop_order: i+1, visit_minutes: visit, travel_minutes_from_previous: travel };
+  });
+  const used = stops.reduce((sum,stop) => sum + stop.visit_minutes + (stop.travel_minutes_from_previous || 0),0);
+  if (used > estimatedMinutes) throw new Error(`Tổng điểm dừng ${used} phút lớn hơn thời gian tuyến ${estimatedMinutes} phút.`);
+  return stops;
+}
+
+function staffRouteStopsEqual(a,b) {
+  return JSON.stringify(a || []) === JSON.stringify(b || []);
+}
+
+async function showStaffRouteForm(route = null) {
+  const editing = !!route;
+  const id = editing ? Number(route.id) : null;
+  if (editing && (!Number.isSafeInteger(id) || id <= 0)) return;
+  openModal('<h2>Đang tải danh sách di tích…</h2><p>Chỉ các địa điểm đã xuất bản mới có thể chọn cho tuyến.</p>');
+  try {
+    const [catalog, detailPayload] = await Promise.all([
+      loadStaffRouteStopCatalog(),
+      editing ? fetchJson(`/api/v1/staff/routes/${id}`) : Promise.resolve(null)
+    ]);
+    if (!catalog.length) throw new Error('Chưa có di tích đã xuất bản để chọn làm điểm dừng.');
+    const detail = editing ? detailPayload?.data : null;
+    if (editing && (!detail?.route || !Array.isArray(detail.stops))) throw new Error('Chi tiết tuyến không hợp lệ.');
+    const current = editing ? detail.route : null;
+    const stops = editing ? [...detail.stops].sort((a,b) => a.stop_order - b.stop_order) :
+      [{ attraction_id: '', visit_minutes: '', travel_minutes_from_previous: null }];
+    staffRouteFormOriginal = {
+      id,
+      info: current && { name_vi: current.name_vi, description_vi: current.description_vi, estimated_minutes: Number(current.estimated_minutes) },
+      stops: editing ? stops.map((stop,i) => ({ attraction_id:Number(stop.attraction_id),stop_order:i+1,visit_minutes:stop.visit_minutes == null ? null : Number(stop.visit_minutes),travel_minutes_from_previous:i===0?null:(stop.travel_minutes_from_previous == null ? null : Number(stop.travel_minutes_from_previous)) })) : []
+    };
+    openModal(`<p class="eyebrow">ADMIN · ${editing ? 'CHỈNH SỬA TUYẾN' : 'TẠO TUYẾN'}</p>
+      <h2>${editing ? 'Sửa tuyến và điểm dừng' : 'Thêm tuyến tham quan'}</h2>
+      <p class="admin-muted">${editing ? 'Khi chỉnh sửa, tuyến được đưa về bản nháp để duyệt lại.' : 'Tạo bản nháp và lưu điểm dừng vào PostgreSQL. Chưa công khai trên User.'}</p>
+      <form id="staff-route-form" ${editing ? `data-route-id="${id}"` : ''}>
+        ${editing ? `<p><strong>Mã tuyến:</strong> ${esc(current.slug)}</p>` : `
+          <label for="staff-route-slug">Mã tuyến (slug)</label>
+          <input id="staff-route-slug" name="slug" pattern="[a-z0-9]+(-[a-z0-9]+)*" maxlength="100" required placeholder="vi-du-tuyen-hue">`}
+        <label for="staff-route-name">Tên tuyến tiếng Việt</label>
+        <input id="staff-route-name" name="name_vi" maxlength="255" required value="${esc(current?.name_vi || '')}">
+        <label for="staff-route-description">Mô tả tuyến</label>
+        <textarea id="staff-route-description" name="description_vi" maxlength="3000" required>${esc(current?.description_vi || '')}</textarea>
+        ${editing ? '' : `<label for="staff-route-area">Mã khu vực</label>
+          <input id="staff-route-area" name="area_code" maxlength="100" value="HUE_ROUTE" required>`}
+        <label for="staff-route-time">Thời gian dự kiến toàn tuyến (phút)</label>
+        <input id="staff-route-time" name="estimated_minutes" type="number" min="1" step="1" value="${editing ? esc(current.estimated_minutes) : '120'}" required>
+        <h3>Chọn di tích và thứ tự điểm dừng</h3>
+        <p class="admin-muted">${catalog.length} di tích đã xuất bản. Dùng ↑ ↓ để thay đổi hành trình; điểm đầu tiên không có thời gian di chuyển từ điểm trước.</p>
+        <div id="staff-route-stops"></div>
+        <p class="admin-muted" id="staff-route-stop-count"></p>
+        <button class="button outline small" type="button" id="staff-route-add-stop">+ Thêm điểm dừng</button>
+        <p class="admin-muted" id="staff-route-time-summary" role="status"></p>
+        <div class="modal-actions"><button class="button" type="submit">${editing ? 'Lưu tuyến và điểm dừng' : 'Tạo tuyến và lưu điểm dừng'}</button></div>
+        <p class="admin-muted" id="staff-route-form-status" role="status"></p>
+      </form>`);
+    const form = $('#staff-route-form');
+    if (form) renderStaffRouteStopRows(form, stops);
+  } catch (error) {
+    console.error('[Staff Route Form]',error);
+    openModal(`<h2>Không tải được danh sách địa điểm</h2><p>${esc(error?.message || 'Lỗi kết nối')}</p>
+      <p>Kiểm tra Backend, phiên Staff và thử lại.</p>`);
+  }
+}
+
+async function showStaffRouteDetail(routeId) {
+  const id = Number(routeId);
+  if (!Number.isSafeInteger(id) || id <= 0) return;
+  try {
+    const payload = await fetchJson(`/api/v1/staff/routes/${id}`);
+    const detail = payload?.data;
+    if (!detail?.route || !Array.isArray(detail.stops)) {
+      throw new Error('Chi tiết tuyến không đúng định dạng');
+    }
+    const route = detail.route;
+    const stops = [...detail.stops].sort((a,b) => Number(a.stop_order) - Number(b.stop_order));
+    openModal(`<p class="eyebrow">QUẢN LÝ TUYẾN · #${id}</p>
+      <h2>${esc(route.name_vi || route.slug)}</h2>
+      <p>${esc(route.description_vi)}</p>
+      <p><strong>Trạng thái:</strong> ${esc(staffRouteStatus(route.status))}</p>
+      <p><strong>Thời gian dự kiến:</strong> ${esc(route.estimated_minutes)} phút · <strong>Phiên bản:</strong> ${esc(route.content_version)}</p>
+      <p><strong>Xác minh:</strong> ${route.verified_at ? 'Đã ghi nhận xác minh' : 'Chưa xác minh'}</p>
+      <h3>Điểm dừng (${stops.length})</h3>
+      <ol>${stops.map(stop => {
+        const aid = Number(stop.attraction_id);
+        const p = places.find(place => Number(place.dbId) === aid);
+        return `<li><strong>${esc(p?.name || `Di tích ID ${aid}`)}</strong>
+          <span class="admin-muted"> · Tham quan: ${stop.visit_minutes == null ? 'Chưa có' : esc(stop.visit_minutes) + ' phút'}
+          · Di chuyển từ điểm trước: ${stop.travel_minutes_from_previous == null ? '—' : esc(stop.travel_minutes_from_previous) + ' phút'}</span></li>`;
+      }).join('')}</ol>
+      ${['draft','published'].includes(route.status) ? `<div class="modal-actions"><button class="button outline small" data-staff-route-edit="${id}">Sửa thông tin và điểm dừng</button></div>` : ''}
+      <h3>Quy trình duyệt tuyến</h3>
+      ${renderStaffRouteWorkflowActions(route, stops)}`);
+  } catch (error) {
+    console.error('[Staff Route Detail]', error);
+    toast('Không thể lấy chi tiết tuyến. Kiểm tra phiên Staff và Backend.');
+  }
+}
+
+let staffRouteWorkflowBusy = false;
+const staffRouteWorkflowConfig = {
+  submit: { endpoint: 'submit', body: {}, label: 'Đã gửi duyệt', confirm: 'Gửi tuyến này để Reviewer/Admin kiểm tra? Sau khi gửi, tuyến sẽ ở trạng thái Chờ duyệt.' },
+  approve: { endpoint: 'review', body: {decision:'approve'}, label: 'Đã ghi nhận phê duyệt / xác minh', confirm: 'Bạn đã kiểm tra thông tin di tích, thứ tự, lối vào thực tế và thời gian di chuyển chưa? Phê duyệt sẽ ghi nhận verified_at; tuyến chưa công khai cho đến khi bấm Xuất bản.' },
+  reject: { endpoint: 'review', body: {decision:'reject'}, label: 'Đã trả tuyến về bản nháp', confirm: 'Trả tuyến về bản nháp để chỉnh sửa lại? Kết quả xác minh cũ (nếu có) sẽ bị hủy.' },
+  publish: { endpoint: 'publish', body: {}, label: 'Đã xuất bản tuyến', confirm: 'Xuất bản tuyến này cho tất cả khách tham quan? Chỉ tiếp tục nếu đã xác minh dữ liệu thực tế và điểm dừng được phép công khai.' }
+};
+
+async function runStaffRouteWorkflow(routeId, action) {
+  if (!IS_ADMIN || staffRouteWorkflowBusy || !Object.hasOwn(staffRouteWorkflowConfig, action)) return;
+  const id = Number(routeId);
+  if (!Number.isSafeInteger(id) || id <= 0) return;
+  const config = staffRouteWorkflowConfig[action];
+  const message = document.querySelector('#staff-route-workflow-message');
+  if (message) message.textContent = 'Đang kiểm tra trạng thái mới nhất của tuyến…';
+  staffRouteWorkflowBusy = true;
+  const controls = [...document.querySelectorAll('[data-staff-route-workflow]')];
+  controls.forEach(button => button.disabled = true);
+  try {
+    // Reload the detail immediately before any write; the modal may be stale.
+    const detail = (await fetchJson(`/api/v1/staff/routes/${id}`))?.data;
+    const route = detail?.route;
+    const stops = detail?.stops;
+    if (!route || !Array.isArray(stops)) throw new Error('Không đọc được trạng thái tuyến hiện tại.');
+    const canRun = action === 'submit' ? route.status === 'draft' && staffRouteReviewTimingReady(route, stops)
+      : action === 'approve' ? route.status === 'in_review' && !route.verified_at && staffRouteReviewTimingReady(route, stops)
+      : action === 'reject' ? route.status === 'in_review'
+      : route.status === 'in_review' && !!route.verified_at && staffRouteReviewTimingReady(route, stops);
+    if (!canRun) throw new Error('Tuyến đã đổi trạng thái hoặc chưa đủ dữ liệu thời gian. Hãy làm mới chi tiết và kiểm tra lại.');
+    if (!window.confirm(config.confirm)) {
+      if (message) message.textContent = '';
+      return;
+    }
+    if (message) message.textContent = 'Đang thực hiện thao tác với Backend…';
+    await staffRouteWrite(`/api/v1/staff/routes/${id}/${config.endpoint}`, 'POST', config.body);
+    closeModal();
+    toast(`${config.label} #${id}.`);
+    await loadStaffRoutesFromBackend();
+  } catch (error) {
+    console.error('[Staff Route Workflow]', error);
+    if (message?.isConnected) message.textContent = `Thao tác chưa thành công: ${String(error?.message || 'Lỗi kết nối')}. Nếu API trả 403, tài khoản không có quyền Reviewer/Admin.`;
+    else toast('Không thực hiện được thao tác. Kiểm tra Console và trạng thái tuyến.');
+  } finally {
+    staffRouteWorkflowBusy = false;
+    controls.forEach(button => { if (button.isConnected) button.disabled = false; });
+  }
+}
+
+async function staffRouteWrite(path, method, body) {
+  const csrfPayload = await fetchJson('/api/v1/staff/auth/csrf');
+  const csrfToken = csrfPayload?.data?.csrf_token;
+  if (typeof csrfToken !== 'string' || !csrfToken) throw new Error('Không lấy được CSRF token. Hãy đăng nhập lại Staff.');
+  const response = await fetch(path, {
+    method, credentials: 'same-origin',
+    headers: { 'Content-Type':'application/json','Accept':'application/json','x-csrf-token':csrfToken },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error?.message || `HTTP ${response.status}`);
+  return payload;
+}
+
+async function saveStaffRouteForm(form) {
+  const statusNode = form.querySelector('#staff-route-form-status');
+  const button = form.querySelector('button[type="submit"]');
+  let id = form.dataset.routeId ? Number(form.dataset.routeId) : null;
+  let editing = id !== null;
+  if (editing && (!Number.isSafeInteger(id) || id <= 0)) return;
+  const data = new FormData(form);
+  const info = {
+    name_vi: String(data.get('name_vi') || '').trim(),
+    description_vi: String(data.get('description_vi') || '').trim(),
+    estimated_minutes: Number(data.get('estimated_minutes'))
+  };
+  const slug = String(data.get('slug') || '').trim();
+  const areaCode = String(data.get('area_code') || '').trim();
+  if (!info.name_vi || !info.description_vi || !Number.isSafeInteger(info.estimated_minutes) || info.estimated_minutes <= 0) {
+    if(statusNode) statusNode.textContent='Hãy kiểm tra tên, mô tả và thời gian dự kiến.';
+    return;
+  }
+  if (!editing && (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || !areaCode)) {
+    if(statusNode) statusNode.textContent='Mã tuyến không hợp lệ hoặc chưa có mã khu vực.';
+    return;
+  }
+  let stops;
+  try { stops = validatedStaffRouteStops(form,info.estimated_minutes); }
+  catch(error) { if(statusNode)statusNode.textContent=String(error.message); return; }
+  const previous = staffRouteFormOriginal;
+  const infoChanged = !editing || !previous?.info ||
+    previous.info.name_vi !== info.name_vi ||
+    previous.info.description_vi !== info.description_vi ||
+    previous.info.estimated_minutes !== info.estimated_minutes;
+  const stopsChanged = !editing || !staffRouteStopsEqual(stops,previous?.stops);
+  if (!infoChanged && !stopsChanged) { if(statusNode)statusNode.textContent='Không có thay đổi nào cần lưu.';return; }
+  if(button) button.disabled=true;
+  try {
+    if (!editing) {
+      if(statusNode) statusNode.textContent='Đang tạo bản nháp trong PostgreSQL…';
+      const payload = await staffRouteWrite('/api/v1/staff/routes','POST',{...info,slug,area_code:areaCode});
+      id = Number(payload?.data?.id);
+      if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Backend đã phản hồi nhưng chưa xác định được ID tuyến. Kiểm tra danh sách trước khi thử lại.');
+      form.dataset.routeId=String(id);
+      editing=true;
+      staffRouteFormOriginal={id,info:{...info},stops:[]};
+      const slugInput=form.querySelector('[name="slug"]');if(slugInput)slugInput.readOnly=true;
+      const areaInput=form.querySelector('[name="area_code"]');if(areaInput)areaInput.readOnly=true;
+    } else if(infoChanged) {
+      if(statusNode) statusNode.textContent='Đang cập nhật thông tin tuyến…';
+      await staffRouteWrite(`/api/v1/staff/routes/${id}`,'PATCH',info);
+      staffRouteFormOriginal={id,info:{...info},stops:previous?.stops || []};
+    }
+    if(stopsChanged) {
+      if(statusNode) statusNode.textContent=`Đã lưu thông tin tuyến #${id}. Đang lưu ${stops.length} điểm dừng…`;
+      await staffRouteWrite(`/api/v1/staff/routes/${id}/stops`,'PUT',{stops});
+      staffRouteFormOriginal={id,info:{...info},stops:stops.map(stop=>({...stop}))};
+    }
+    closeModal();
+    toast(`Đã lưu tuyến #${id} và ${stops.length} điểm dừng vào PostgreSQL.`);
+    await loadStaffRoutesFromBackend();
+  } catch(error) {
+    console.error('[Staff Route Save]',error);
+    if(statusNode) statusNode.textContent=`Chưa lưu xong: ${String(error?.message || 'Lỗi kết nối')}. Nếu tuyến đã được tạo, bấm lưu lại để thử ghi điểm dừng mà không tạo tuyến trùng.`;
+  } finally {
+    if(button && button.isConnected)button.disabled=false;
+  }
+}
+
+const adminTabs=[['dashboard','home','Dashboard'],['content','book','Quản lý nội dung'],['routes','route','Quản lý tuyến tham quan'],['reports','compass','Báo cáo thống kê'],['tasks','calendar','Công việc']];
 const adminEvents=read('hue-analytics-events',[]);
 function trackEvent(type,id='',lang=''){adminEvents.push({type,id,lang,time:Date.now()});if(adminEvents.length>3000)adminEvents.splice(0,adminEvents.length-3000);write('hue-analytics-events',adminEvents)}
 function adminData(){const demo=state.adminMode==='demo',days=state.adminPeriod;const dates=Array.from({length:days},(_,i)=>{const d=new Date();d.setDate(d.getDate()-days+i+1);return d.toLocaleDateString('en-CA',{timeZone:'Asia/Ho_Chi_Minh'})});const events=adminEvents.filter(e=>dates.includes(new Date(e.time).toLocaleDateString('en-CA',{timeZone:'Asia/Ho_Chi_Minh'})));const series=dates.map((d,i)=>demo?([42,67,54,91,76,103,128][i%7]+Math.floor(i/7)*8):events.filter(e=>e.type==='view'&&new Date(e.time).toLocaleDateString('en-CA',{timeZone:'Asia/Ho_Chi_Minh'})===d).length);const rankings=places.map((p,i)=>({name:p.name,value:demo?Math.max(12,360-i*34)*(days===30?4:1):events.filter(e=>e.type==='detail'&&e.id===p.id).length})).sort((a,b)=>b.value-a.value);const vi=demo?(days===7?284:1136):events.filter(e=>e.type==='audio'&&e.lang==='vi-VN').length;const en=demo?(days===7?116:464):events.filter(e=>e.type==='audio'&&e.lang==='en-US').length;return {dates,series,rankings,views:series.reduce((a,b)=>a+b,0),listens:vi+en,vi,en,starts:demo?(days===7?86:344):events.filter(e=>e.type==='route').length}}
@@ -415,7 +1213,7 @@ function adminRanking(data){const max=Math.max(1,...data.rankings.map(x=>x.value
 function adminLanguages(data){const total=data.vi+data.en;return `<article class="admin-card"><div class="card-top"><h2>Ngôn ngữ thuyết minh</h2>${icon('headphones')}</div><div class="language-donut" style="--split:${total?data.vi/total*100:0}%"><div><strong>${total}</strong><small>lượt nghe</small></div></div><div class="language-legend"><span><i></i>Tiếng Việt <b>${total?Math.round(data.vi/total*100):0}%</b></span><span><i></i>English <b>${total?Math.round(data.en/total*100):0}%</b></span></div></article>`}
 function adminTaskList(limit=100){const tasks=state.tasks.slice().sort((a,b)=>a.date.localeCompare(b.date)).slice(0,limit);return tasks.length?tasks.map(t=>`<div class="admin-task ${t.done?'done':''}"><button data-task-toggle="${esc(t.id)}" aria-label="${t.done?'Mở lại':'Hoàn thành'} công việc" aria-pressed="${t.done}">${icon(t.done?'check':'calendar')}</button><div><strong>${esc(t.title)}</strong><small>${esc(t.date.split('-').reverse().join('/'))} · ${t.done?'Đã hoàn thành':'Cần thực hiện'}</small></div><button class="text-button" data-task-delete="${esc(t.id)}" aria-label="Xóa công việc">${icon('trash')}</button></div>`).join(''):'<div class="admin-no-tasks">Chưa có công việc.<br>Thêm lịch biên tập đầu tiên của bạn.</div>'}
 function adminTaskForm(){openModal(`<p class="eyebrow">LỊCH BIÊN TẬP</p><h2>Thêm công việc</h2><form id="admin-task-form"><label for="task-title">Tên công việc</label><input name="title" id="task-title" required maxlength="100" placeholder="Ví dụ: Kiểm tra nội dung Đại Nội"><label for="task-date">Ngày thực hiện</label><input type="date" id="task-date" name="date" required value="${new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Ho_Chi_Minh'})}"><div class="modal-actions"><button class="button" type="submit">Lưu công việc</button></div></form>`)}
-function renderAdmin(){const d=adminData(),demo=state.adminMode==='demo';const controls=`<div class="admin-controls"><label>Nguồn dữ liệu<select id="admin-mode"><option value="demo" ${demo?'selected':''}>Minh họa</option><option value="local" ${!demo?'selected':''}>Thiết bị này</option></select></label><label>Khoảng thời gian<select id="admin-period"><option value="7" ${state.adminPeriod===7?'selected':''}>7 ngày qua</option><option value="30" ${state.adminPeriod===30?'selected':''}>30 ngày qua</option></select></label><button class="button small" id="admin-export">${icon('download')} Xuất CSV</button></div>`;const top=`${header(state.adminTab==='dashboard'?'Xin chào, quản trị viên.':adminTabs.find(t=>t[0]===state.adminTab)[2],'Theo dõi hoạt động và chăm chút từng câu chuyện di sản.','HUE GUIDE / ADMIN',controls)}<div class="admin-data-note"><span class="admin-mode-badge">${demo?'DỮ LIỆU MINH HỌA':'DỮ LIỆU THIẾT BỊ NÀY'}</span><span>${demo?'Số liệu mẫu để trình diễn thiết kế, không phải thống kê người dùng thực tế.':'Chỉ ghi nhận hoạt động trên trình duyệt này từ khi tính năng được thêm; không đại diện toàn hệ thống.'}</span></div>`;
+function renderAdmin(){if(state.adminTab==='routes')return renderAdminRoutes();const d=adminData(),demo=state.adminMode==='demo';const controls=`<div class="admin-controls"><label>Nguồn dữ liệu<select id="admin-mode"><option value="demo" ${demo?'selected':''}>Minh họa</option><option value="local" ${!demo?'selected':''}>Thiết bị này</option></select></label><label>Khoảng thời gian<select id="admin-period"><option value="7" ${state.adminPeriod===7?'selected':''}>7 ngày qua</option><option value="30" ${state.adminPeriod===30?'selected':''}>30 ngày qua</option></select></label><button class="button small" id="admin-export">${icon('download')} Xuất CSV</button></div>`;const top=`${header(state.adminTab==='dashboard'?'Xin chào, quản trị viên.':adminTabs.find(t=>t[0]===state.adminTab)[2],'Theo dõi hoạt động và chăm chút từng câu chuyện di sản.','HUE GUIDE / ADMIN',controls)}<div class="admin-data-note"><span class="admin-mode-badge">${demo?'DỮ LIỆU MINH HỌA':'DỮ LIỆU THIẾT BỊ NÀY'}</span><span>${demo?'Số liệu mẫu để trình diễn thiết kế, không phải thống kê người dùng thực tế.':'Chỉ ghi nhận hoạt động trên trình duyệt này từ khi tính năng được thêm; không đại diện toàn hệ thống.'}</span></div>`;
 if(state.adminTab==='content')return top+`<input id="admin-search" class="admin-search" value="${esc(state.adminSearch)}" placeholder="Tìm di tích rồi nhấn Enter…" aria-label="Tìm nội dung quản trị">`+renderAdminContent();
 if(state.adminTab==='reports')return top+`<div class="admin-report-grid"><article class="admin-card"><div class="card-top"><h2>Lượt xem theo ngày</h2><span>${state.adminPeriod} ngày qua</span></div><strong class="admin-number">${d.views.toLocaleString('vi-VN')}</strong>${adminChart(d)}</article>${adminLanguages(d)}${adminRanking(d)}<article class="admin-card"><h2>Phạm vi dữ liệu</h2><div class="report-facts"><p><span>Di tích trong thư viện</span><b>${places.length}</b></p><p><span>Lượt bắt đầu tuyến</span><b>${d.starts}</b></p><p><span>Bản nháp trên thiết bị</span><b>${Object.values(state.drafts).filter(x=>x.status==='Bản nháp').length}</b></p><p><span>Nội dung chờ duyệt</span><b>${Object.values(state.drafts).filter(x=>x.status==='Chờ duyệt').length}</b></p></div><p class="admin-muted">Bản nháp và công việc luôn lấy từ thiết bị này. Nút Xuất CSV sử dụng nguồn và khoảng thời gian đang chọn.</p></article></div>`;
 if(state.adminTab==='tasks')return top+`<article class="admin-card admin-tasks-full"><div class="card-top"><h2>Công việc trên thiết bị này · ${state.tasks.filter(t=>!t.done).length} chưa hoàn thành</h2><button class="button small" id="add-admin-task">+ Thêm công việc</button></div>${adminTaskList()}</article>`;
@@ -444,9 +1242,13 @@ function render(){
   document.body.classList.toggle('admin-mode', IS_ADMIN);
   const pages = {home:renderHome,weather:renderWeather,explore:renderExplore,popular:renderPopular,map:renderMap,routes:renderRoutes,audio:renderAudio,chat:renderChat,admin:renderAdmin};
   window.HueMap?.destroy();
+  huePublicRouteMap.destroy();
   content.innerHTML = pages[state.page]();
   if (state.page === 'map' && attractionApi.status === 'ready') {
     window.HueMap?.mount(places, state.mapId, state.location);
+  }
+  if (state.page === 'routes' && publicRouteApi.detailStatus === 'ready' && publicRouteApi.detail?.stops?.length) {
+    huePublicRouteMap.mount(publicRouteApi.detail.stops, publicRouteApi.detail.id);
   }
   document.title = (IS_ADMIN ? 'Quản trị di sản' : $('#breadcrumb').textContent) + ' — Hue Guide';
   updateDock(); syncPromoTimer();
@@ -496,13 +1298,13 @@ async function sendQuestion(question){
   }
 }
 function enableGPS(){if(!navigator.geolocation){toast('Thiết bị không hỗ trợ định vị. Bạn có thể chọn di tích thủ công.');return}const button=$('#enable-gps');if(button){button.disabled=true;button.textContent='Đang xin vị trí…'}navigator.geolocation.getCurrentPosition(p=>{state.location={latitude:p.coords.latitude,longitude:p.coords.longitude};if(state.page==='map'){window.HueMap?.showLocation(state.location);render()}toast('Đã nhận vị trí. Không lưu lịch sử GPS.')},()=>{if(state.page==='map')render();toast('Chưa nhận được vị trí. Bạn vẫn có thể chọn địa điểm thủ công.')},{enableHighAccuracy:true,timeout:10000,maximumAge:30000})}
-document.addEventListener('click',e=>{const b=e.target.closest('button,a');if(!b){if(e.target===$('#modal'))closeModal();return}if(b.dataset.exploreType){state.query='';state.filter=b.dataset.exploreType;navigate('explore')}else if(b.dataset.promoStep){setPromo(state.promoIndex+Number(b.dataset.promoStep));syncPromoTimer()}else if(b.dataset.promoDot!==undefined){setPromo(Number(b.dataset.promoDot));syncPromoTimer()}else if(b.id==='promo-pause'){togglePromo()}else if(b.dataset.adminTab){const previous=state.adminTab;state.adminTab=b.dataset.adminTab;render();if(previous!==state.adminTab)playCloudTransition(adminTabs.find(t=>t[0]===state.adminTab)?.[2]||'Admin');$('.sidebar').classList.remove('open')}else if(b.hasAttribute('data-admin-review')){state.adminTab='content';state.adminFilter='in_review';render()}else if(b.id==='refresh-admin-attractions'){loadStaffAttractions()}else if(b.id==='add-admin-task'){adminTaskForm()}else if(b.id==='admin-export'){exportAdmin()}else if(b.dataset.taskToggle){const t=state.tasks.find(t=>t.id===b.dataset.taskToggle);if(t)t.done=!t.done;write('hue-admin-tasks',state.tasks);render()}else if(b.dataset.taskDelete){state.tasks=state.tasks.filter(t=>t.id!==b.dataset.taskDelete);write('hue-admin-tasks',state.tasks);render()}else if(b.dataset.weatherDay!==undefined){weather.day=Number(b.dataset.weatherDay);paintWeather()}else if(b.id==='refresh-weather'||b.id==='retry-weather'){loadWeather(true)}else if(b.dataset.page){state.query='';state.filter='Tất cả';navigate(b.dataset.page)}else if(b.dataset.detail)detail(b.dataset.detail);else if(b.dataset.audio){selectTrack(b.dataset.audio);closeModal()}else if(b.dataset.track)selectTrack(b.dataset.track);else if(b.hasAttribute('data-play'))playAudio();else if(b.dataset.filter){state.filter=b.dataset.filter;render()}else if(b.dataset.adminFilter){state.adminFilter=b.dataset.adminFilter;render()}else if(b.dataset.mapPoi){state.mapId=b.dataset.mapPoi;window.HueMap?.focus(state.mapId);document.querySelectorAll('.map-poi').forEach(node=>node.classList.toggle('active',node.dataset.mapPoi===state.mapId));const current=byId(state.mapId);const title=$('#hue-map-selected-name'),subtitle=$('#hue-map-selected-type'),details=$('.hue-map-selected [data-detail]'),osm=$('#hue-open-osm');if(title)title.textContent=current.name;if(subtitle)subtitle.textContent=current.type+' · Điểm tham khảo';if(details)details.dataset.detail=current.id;if(osm&&validHuePoint(current.latitude,current.longitude))osm.href=`https://www.openstreetmap.org/?mlat=${current.latitude}&mlon=${current.longitude}#map=15/${current.latitude}/${current.longitude}`}else if(b.dataset.showMap){state.mapId=b.dataset.showMap;navigate('map')}else if(b.dataset.route){state.routeId=b.dataset.route;navigate('routes')}else if(b.dataset.selectRoute){state.routeId=b.dataset.selectRoute;render()}else if(b.dataset.question)sendQuestion(b.dataset.question);else if(b.dataset.edit)edit(b.dataset.edit);else if(b.id==='close-modal')closeModal();else if(b.id==='menu-toggle')$('.sidebar').classList.toggle('open');else if(b.id==='enable-gps')enableGPS();else if(b.id==='toggle-real-map'){state.realMap=!state.realMap;render()}else if(b.id==='start-route'){trackEvent('route',b.dataset.id);state.activeRoute={id:b.dataset.id,step:0};write('hue-active-route',state.activeRoute);render();toast('Đã bắt đầu tuyến. Bạn tự chuyển điểm dừng khi sẵn sàng.')}else if(b.id==='next-stop'){const r=routes.find(r=>r.id===state.activeRoute.id);if(state.activeRoute.step<r.stops.length-1){state.activeRoute.step++;toast('Điểm tiếp theo: '+byId(r.stops[state.activeRoute.step]).name)}else{state.activeRoute=null;toast('Bạn đã hoàn thành hành trình mẫu!')}write('hue-active-route',state.activeRoute);render()}else if(b.id==='audio-stop'||b.id==='dock-stop')stopAudio();else if(b.id==='audio-restart'){stopAudio(false);playAudio()}else if(b.id==='clear-chat'){chatResetVersion++;window.HueChatAPI.reset();state.chat=[];state.chatBusy=false;render()}});
+document.addEventListener('click',e=>{const b=e.target.closest('button,a');if(!b){if(e.target===$('#modal'))closeModal();return}if(!IS_ADMIN && b.id==='retry-public-routes'){publicRouteApi.status='loading';render();loadPublishedRoutesFromBackend()}else if(!IS_ADMIN&&b.dataset.publicRouteSelect){selectPublishedRoute(b.dataset.publicRouteSelect)}else if(!IS_ADMIN&&b.dataset.publicRouteRetry){selectPublishedRoute(b.dataset.publicRouteRetry)}else if(!IS_ADMIN&&b.dataset.publicStopFocus!==undefined){huePublicRouteMap.focus(Number(b.dataset.publicStopFocus))}else if(!IS_ADMIN&&b.id==='public-route-fit-all'){huePublicRouteMap.fitAll()}else if(!IS_ADMIN&&b.id==='public-route-focus-current'){huePublicRouteMap.focus(Number(state.activeRoute?.step)||0)}else if(!IS_ADMIN&&b.id==='public-route-locate-me'){locatePublicRouteUser()}else if(!IS_ADMIN&&b.id==='start-public-route'){const route=publicRouteApi.detail;if(route?.stops?.length){state.activeRoute={id:Number(route.id),step:0};write('hue-active-route',state.activeRoute);trackEvent('route',String(route.id));render();toast('Đã bắt đầu tuyến. Bạn chuyển điểm dừng khi sẵn sàng.')}}else if(!IS_ADMIN&&b.id==='next-public-stop'){const route=publicRouteApi.detail;if(route?.stops?.length&&validPublicRouteId(state.activeRoute?.id)===Number(route.id)){if(state.activeRoute.step < route.stops.length-1){state.activeRoute.step++;toast('Điểm tiếp theo: '+(route.stops[state.activeRoute.step].attraction_name||'Điểm dừng'))}else{state.activeRoute=null;toast('Bạn đã hoàn thành hành trình!')}write('hue-active-route',state.activeRoute);render()}}else if(!IS_ADMIN&&b.id==='end-public-route'){state.activeRoute=null;write('hue-active-route',null);render();toast('Đã kết thúc hành trình.')}else if(b.dataset.exploreType){state.query='';state.filter=b.dataset.exploreType;navigate('explore')}else if(b.dataset.promoStep){setPromo(state.promoIndex+Number(b.dataset.promoStep));syncPromoTimer()}else if(b.dataset.promoDot!==undefined){setPromo(Number(b.dataset.promoDot));syncPromoTimer()}else if(b.id==='promo-pause'){togglePromo()}else if(IS_ADMIN&&b.closest('#staff-route-form')&&(b.id==='staff-route-add-stop'||b.dataset.staffStopUp!==undefined||b.dataset.staffStopDown!==undefined||b.dataset.staffStopRemove!==undefined)){const form=b.closest('#staff-route-form');const stops=staffRouteRawStops(form);if(b.id==='staff-route-add-stop')stops.push({attraction_id:'',visit_minutes:'',travel_minutes_from_previous:''});else if(b.dataset.staffStopUp!==undefined){const i=Number(b.dataset.staffStopUp);if(i>0&&i<stops.length)[stops[i-1],stops[i]]=[stops[i],stops[i-1]]}else if(b.dataset.staffStopDown!==undefined){const i=Number(b.dataset.staffStopDown);if(i>=0&&i<stops.length-1)[stops[i+1],stops[i]]=[stops[i],stops[i+1]]}else if(b.dataset.staffStopRemove!==undefined){const i=Number(b.dataset.staffStopRemove);if(stops.length>1&&i>=0&&i<stops.length)stops.splice(i,1)}renderStaffRouteStopRows(form,stops)}else if(IS_ADMIN&&b.dataset.staffRouteWorkflow){runStaffRouteWorkflow(b.dataset.routeId,b.dataset.staffRouteWorkflow)}else if(IS_ADMIN&&b.id==='staff-route-refresh'){loadStaffRoutesFromBackend()}else if(IS_ADMIN&&b.id==='staff-route-create'){showStaffRouteForm()}else if(IS_ADMIN&&b.dataset.staffRouteDetail){showStaffRouteDetail(b.dataset.staffRouteDetail)}else if(IS_ADMIN&&b.dataset.staffRouteEdit){const r=staffRouteApi.items.find(r=>String(r.id)===String(b.dataset.staffRouteEdit));if(r)showStaffRouteForm(r)}else if(b.dataset.adminTab){const previous=state.adminTab;state.adminTab=b.dataset.adminTab;render();if(state.adminTab==='routes' && staffRouteApi.status==='idle')loadStaffRoutesFromBackend();if(previous!==state.adminTab)playCloudTransition(adminTabs.find(t=>t[0]===state.adminTab)?.[2]||'Admin');$('.sidebar').classList.remove('open')}else if(b.hasAttribute('data-admin-review')){state.adminTab='content';state.adminFilter='in_review';render()}else if(b.id==='refresh-admin-attractions'){loadStaffAttractions()}else if(b.id==='add-admin-task'){adminTaskForm()}else if(b.id==='admin-export'){exportAdmin()}else if(b.dataset.taskToggle){const t=state.tasks.find(t=>t.id===b.dataset.taskToggle);if(t)t.done=!t.done;write('hue-admin-tasks',state.tasks);render()}else if(b.dataset.taskDelete){state.tasks=state.tasks.filter(t=>t.id!==b.dataset.taskDelete);write('hue-admin-tasks',state.tasks);render()}else if(b.dataset.weatherDay!==undefined){weather.day=Number(b.dataset.weatherDay);paintWeather()}else if(b.id==='refresh-weather'||b.id==='retry-weather'){loadWeather(true)}else if(b.dataset.page){state.query='';state.filter='Tất cả';navigate(b.dataset.page)}else if(b.dataset.detail)detail(b.dataset.detail);else if(b.dataset.audio){selectTrack(b.dataset.audio);closeModal()}else if(b.dataset.track)selectTrack(b.dataset.track);else if(b.hasAttribute('data-play'))playAudio();else if(b.dataset.filter){state.filter=b.dataset.filter;render()}else if(b.dataset.adminFilter){state.adminFilter=b.dataset.adminFilter;render()}else if(b.dataset.mapPoi){state.mapId=b.dataset.mapPoi;window.HueMap?.focus(state.mapId);document.querySelectorAll('.map-poi').forEach(node=>node.classList.toggle('active',node.dataset.mapPoi===state.mapId));const current=byId(state.mapId);const title=$('#hue-map-selected-name'),subtitle=$('#hue-map-selected-type'),details=$('.hue-map-selected [data-detail]'),osm=$('#hue-open-osm');if(title)title.textContent=current.name;if(subtitle)subtitle.textContent=current.type+' · Điểm tham khảo';if(details)details.dataset.detail=current.id;if(osm&&validHuePoint(current.latitude,current.longitude))osm.href=`https://www.openstreetmap.org/?mlat=${current.latitude}&mlon=${current.longitude}#map=15/${current.latitude}/${current.longitude}`}else if(b.dataset.showMap){state.mapId=b.dataset.showMap;navigate('map')}else if(b.dataset.route){state.routeId=b.dataset.route;navigate('routes')}else if(b.dataset.selectRoute){state.routeId=b.dataset.selectRoute;render()}else if(b.dataset.question)sendQuestion(b.dataset.question);else if(b.dataset.edit)edit(b.dataset.edit);else if(b.id==='close-modal')closeModal();else if(b.id==='menu-toggle')$('.sidebar').classList.toggle('open');else if(b.id==='enable-gps')enableGPS();else if(b.id==='toggle-real-map'){state.realMap=!state.realMap;render()}else if(b.id==='start-route'){trackEvent('route',b.dataset.id);state.activeRoute={id:b.dataset.id,step:0};write('hue-active-route',state.activeRoute);render();toast('Đã bắt đầu tuyến. Bạn tự chuyển điểm dừng khi sẵn sàng.')}else if(b.id==='next-stop'){const r=routes.find(r=>r.id===state.activeRoute.id);if(state.activeRoute.step<r.stops.length-1){state.activeRoute.step++;toast('Điểm tiếp theo: '+byId(r.stops[state.activeRoute.step]).name)}else{state.activeRoute=null;toast('Bạn đã hoàn thành hành trình mẫu!')}write('hue-active-route',state.activeRoute);render()}else if(b.id==='audio-stop'||b.id==='dock-stop')stopAudio();else if(b.id==='audio-restart'){stopAudio(false);playAudio()}else if(b.id==='clear-chat'){chatResetVersion++;window.HueChatAPI.reset();state.chat=[];state.chatBusy=false;render()}});
 window.addEventListener('hue-map-select', e=>{if(e.detail && places.some(p=>p.id===e.detail.slug))state.mapId=e.detail.slug});
-document.addEventListener('input',e=>{if(e.target.id==='local-search'){state.query=e.target.value;if(state.page==='popular'){$('#attraction-results').innerHTML=popularResults();$('#popular-count').textContent=popularPlaces().length+' điểm đến';return}const list=filteredPlaces();$('#attraction-results').innerHTML=list.length?`<div class="attraction-grid">${list.map(card).join('')}</div>`:'<div class="empty"><h2>Chưa tìm thấy di tích phù hợp</h2><p>Thử từ khóa khác hoặc bỏ bộ lọc.</p></div>'}});
-document.addEventListener('change',e=>{if(e.target.id==='admin-mode'){state.adminMode=e.target.value;render()}else if(e.target.id==='admin-period'){state.adminPeriod=Number(e.target.value);render()}else if(e.target.id==='audio-language'){stopAudio(false);state.audioLanguage=e.target.value;write('hue-audio-language',state.audioLanguage);render()}});
+document.addEventListener('input',e=>{if(IS_ADMIN&&e.target.closest?.('#staff-route-form'))refreshStaffRouteStopSummary(e.target.closest('#staff-route-form'));if(e.target.id==='local-search'){state.query=e.target.value;if(state.page==='popular'){$('#attraction-results').innerHTML=popularResults();$('#popular-count').textContent=popularPlaces().length+' điểm đến';return}const list=filteredPlaces();$('#attraction-results').innerHTML=list.length?`<div class="attraction-grid">${list.map(card).join('')}</div>`:'<div class="empty"><h2>Chưa tìm thấy di tích phù hợp</h2><p>Thử từ khóa khác hoặc bỏ bộ lọc.</p></div>'}});
+document.addEventListener('change',e=>{if(IS_ADMIN&&e.target.closest?.('#staff-route-form'))refreshStaffRouteStopSummary(e.target.closest('#staff-route-form'));if(e.target.id==='staff-route-filter'){state.staffRouteFilter=e.target.value;render()}else if(e.target.id==='admin-mode'){state.adminMode=e.target.value;render()}else if(e.target.id==='admin-period'){state.adminPeriod=Number(e.target.value);render()}else if(e.target.id==='audio-language'){stopAudio(false);state.audioLanguage=e.target.value;write('hue-audio-language',state.audioLanguage);render()}});
 document.addEventListener('keydown',e=>{if(e.target.closest?.('#promo-carousel')&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();setPromo(state.promoIndex+(e.key==='ArrowRight'?1:-1));syncPromoTimer()}if(e.key==='Escape'){closeModal();$('.sidebar').classList.remove('open')}if(e.target.id==='admin-search'&&e.key==='Enter'){state.adminSearch=e.target.value;render()}if(e.target.id==='global-search'&&e.key==='Enter'&&state.page==='admin'){state.adminSearch=e.target.value.trim();state.adminTab='content';render();return}if(e.target.id==='global-search'&&e.key==='Enter'){state.query=e.target.value.trim();state.filter='Tất cả';navigate('explore')}if(!$('#modal').hidden&&e.key==='Tab'){const items=$('#modal').querySelectorAll('button,input,textarea,a,select');const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
-document.addEventListener('submit',e=>{if(e.target.id==='admin-task-form'){e.preventDefault();const f=new FormData(e.target),title=String(f.get('title')||'').trim(),date=String(f.get('date')||'');if(!title||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;state.tasks.push({id:String(Date.now())+Math.random().toString(36).slice(2,7),title,date,done:false});write('hue-admin-tasks',state.tasks);closeModal();render();toast('Đã lưu công việc trên thiết bị.')}else if(e.target.id==='chat-form'){e.preventDefault();const input=$('#chat-input');sendQuestion(input.value)}else if(e.target.id==='edit-form'){e.preventDefault();const id=e.target.dataset.id;const f=new FormData(e.target),source=String(f.get('source')).trim(),review=e.submitter?.value==='review';if(review&&!source){toast('Vui lòng bổ sung nguồn tham khảo trước khi gửi duyệt.');$('#edit-source').focus();return}state.drafts[id]={name:String(f.get('name')).trim(),description:String(f.get('description')).trim(),source,status:review?'Chờ duyệt':'Bản nháp'};if(!state.drafts[id].name||!state.drafts[id].description){toast('Tên và nội dung không được để trống.');return}write('hue-content-drafts',state.drafts);closeModal();render();toast(review?'Đã chuyển sang chờ duyệt trên bản mô phỏng':'Đã lưu bản nháp trên thiết bị')}});
+document.addEventListener('submit',e=>{if(IS_ADMIN&&e.target.id==='staff-route-form'){e.preventDefault();saveStaffRouteForm(e.target);return}if(e.target.id==='admin-task-form'){e.preventDefault();const f=new FormData(e.target),title=String(f.get('title')||'').trim(),date=String(f.get('date')||'');if(!title||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;state.tasks.push({id:String(Date.now())+Math.random().toString(36).slice(2,7),title,date,done:false});write('hue-admin-tasks',state.tasks);closeModal();render();toast('Đã lưu công việc trên thiết bị.')}else if(e.target.id==='chat-form'){e.preventDefault();const input=$('#chat-input');sendQuestion(input.value)}else if(e.target.id==='edit-form'){e.preventDefault();const id=e.target.dataset.id;const f=new FormData(e.target),source=String(f.get('source')).trim(),review=e.submitter?.value==='review';if(review&&!source){toast('Vui lòng bổ sung nguồn tham khảo trước khi gửi duyệt.');$('#edit-source').focus();return}state.drafts[id]={name:String(f.get('name')).trim(),description:String(f.get('description')).trim(),source,status:review?'Chờ duyệt':'Bản nháp'};if(!state.drafts[id].name||!state.drafts[id].description){toast('Tên và nội dung không được để trống.');return}write('hue-content-drafts',state.drafts);closeModal();render();toast(review?'Đã chuyển sang chờ duyệt trên bản mô phỏng':'Đã lưu bản nháp trên thiết bị')}});
 window.addEventListener('hashchange',()=>{const previous=state.page;if(openingActive)finishOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');render();if(previous!==state.page)playCloudTransition($('#breadcrumb').textContent);window.scrollTo({top:0,behavior:'instant'});$('#content').focus({preventScroll:true})});window.addEventListener('pagehide',()=>{clearTimeout(cloudExitTimer);const cloud=$('#cloud-transition');if(cloud)cloud.hidden=true;clearInterval(promoTimer);speechSynthesisSafe()?.cancel()});
-if(!IS_ADMIN)initOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');$('#menu-toggle').innerHTML=icon('menu');$('#search-icon').innerHTML=icon('search');if($('#top-popular'))$('#top-popular').innerHTML=icon('trend');render();loadAttractionsFromBackend();if (!IS_ADMIN) {
+if(!IS_ADMIN)injectPublicRouteStyles();if(!IS_ADMIN)initOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');$('#menu-toggle').innerHTML=icon('menu');$('#search-icon').innerHTML=icon('search');if($('#top-popular'))$('#top-popular').innerHTML=icon('trend');render();loadAttractionsFromBackend();if (!IS_ADMIN) {
   loadPublishedRoutesFromBackend();
 };if(IS_ADMIN)loadStaffAttractions();
