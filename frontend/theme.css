@@ -162,3 +162,56 @@ body .route-detail>h2,body .step h3{color:#51361f}
 body .route-detail>p:not(.eyebrow),body .step p{color:#795737}
 body .route-detail .eyebrow{color:#805930}
 body .step .text-button{color:#805126}
+
+/* M2.1 - Bộ lọc trạng thái tuyến tham quan */
+
+body.admin-mode label[for="staff-route-filter"] {
+  font-size: 13px;
+  font-weight: 600;
+  color: #765535;
+  margin-left: 8px;
+}
+
+body.admin-mode #staff-route-filter {
+  appearance: none;
+  -webkit-appearance: none;
+
+  min-width: 165px;
+  height: 40px;
+  padding: 0 38px 0 16px;
+
+  background-color: #fff7e9;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #765535 50%),
+    linear-gradient(135deg, #765535 50%, transparent 50%);
+  background-position:
+    calc(100% - 19px) 17px,
+    calc(100% - 14px) 17px;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+
+  border: 1px solid #d6b88e;
+  border-radius: 12px;
+
+  color: #68482e;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+body.admin-mode #staff-route-filter:hover {
+  background-color: #fffaf1;
+  border-color: #a77b4d;
+}
+
+body.admin-mode #staff-route-filter:focus-visible {
+  outline: 2px solid #9b7147;
+  outline-offset: 2px;
+}
+
+body.admin-mode #staff-route-filter option {
+  background: #fff7e9;
+  color: #68482e;
+}

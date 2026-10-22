@@ -1,5 +1,6 @@
 import {
   createDraftMedia,
+  listStaffMediaByAttraction,
 } from "../repositories/staff-media.repository";
 
 import {
@@ -203,4 +204,30 @@ export async function createStaffMedia(
 
     throw error;
   }
+}
+
+/** Return all media for one existing attraction; do not filter out drafts for staff. */
+export async function listStaffMedia(
+  attractionId: number
+) {
+  const attraction = await findStaffAttractionById(attractionId);
+  if (!attraction) {
+    throw new StaffMediaAttractionNotFoundError();
+  }
+  const rows = await listStaffMediaByAttraction(attractionId);
+  return rows.map((media) => ({
+    id: Number(media.media_id),
+    attraction_id: Number(media.attraction_id),
+    language_code: media.language_code,
+    media_type: media.media_type,
+    file_url: media.file_url,
+    caption: media.caption,
+    credit: media.credit,
+    rights_reference: media.rights_reference,
+    duration_seconds: media.duration_seconds,
+    display_order: media.display_order,
+    status: media.status,
+    approved_by: media.approved_by === null ? null : Number(media.approved_by),
+    published_at: media.published_at,
+  }));
 }

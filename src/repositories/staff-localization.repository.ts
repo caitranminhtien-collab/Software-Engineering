@@ -128,3 +128,21 @@ export async function upsertEditableLocalization(
 
   return result.rows[0] ?? null;
 }
+/** Insert only; do not overwrite an existing approved or editor-modified translation. */
+export async function insertTranslationDraftIfAbsent(
+  attractionId: number,
+  language: string,
+  name: string,
+  description: string,
+  sourceReferences: unknown[]
+): Promise<StaffLocalizationRow | null> {
+  const result = await db.query<StaffLocalizationRow>(`
+    INSERT INTO attraction_localizations
+      (attraction_id, language_code, name, description, source_references, status, content_version)
+    VALUES ($1, $2, $3, $4, $5, 'draft', 1)
+    ON CONFLICT (attraction_id, language_code) DO NOTHING
+    RETURNING localization_id, attraction_id, language_code, name, description,
+      source_references, status, content_version, approved_by, published_at
+  `, [attractionId, language, name, description, JSON.stringify(sourceReferences)]);
+  return result.rows[0] ?? null;
+}

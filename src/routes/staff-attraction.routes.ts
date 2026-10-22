@@ -9,6 +9,7 @@ import {
 
 import {
   createStaffMediaController,
+  listStaffMediaController,
 } from "../controllers/staff-media.controller";
 
 import {
@@ -41,6 +42,8 @@ import {
 import {
   getStaffLocalizationController,
   upsertStaffLocalizationController,
+  generateStaffLocalizationController,
+  regenerateStaffLocalizationController,
 } from "../controllers/staff-localization.controller";
 
 import {
@@ -49,6 +52,7 @@ import {
 } from "../validators/staff-localization.validator";
 
 const router = Router();
+
 router.get(
   "/",
   requireStaffSession,
@@ -99,13 +103,27 @@ router.patch(
 router.get(
   "/:id/localizations/:language",
   requireStaffSession,
-  requireStaffRole(
-    "editor",
-    "reviewer",
-    "admin"
-  ),
+  requireStaffRole("editor", "reviewer", "admin"),
   validateStaffLocalizationParams,
   getStaffLocalizationController
+);
+
+router.post(
+  "/:id/localizations/:language/generate",
+  requireStaffSession,
+  requireStaffRole("editor", "admin"),
+  requireCsrfToken,
+  validateStaffLocalizationParams,
+  generateStaffLocalizationController
+);
+
+router.post(
+  "/:id/localizations/:language/regenerate",
+  requireStaffSession,
+  requireStaffRole("editor", "admin"),
+  requireCsrfToken,
+  validateStaffLocalizationParams,
+  regenerateStaffLocalizationController
 );
 
 router.put(
@@ -119,6 +137,14 @@ router.put(
   validateStaffLocalizationParams,
   validateUpsertStaffLocalization,
   upsertStaffLocalizationController
+);
+
+router.get(
+  "/:id/media",
+  requireStaffSession,
+  requireStaffRole("editor", "reviewer", "admin"),
+  validateStaffMediaParams,
+  listStaffMediaController
 );
 
 router.post(

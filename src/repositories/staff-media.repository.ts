@@ -137,3 +137,22 @@ export async function findStaffMediaById(
 
   return result.rows[0] ?? null;
 }
+
+/** List all staff-visible media (including drafts) for a single attraction. */
+export async function listStaffMediaByAttraction(
+  attractionId: number
+): Promise<StaffMediaRow[]> {
+  const result = await db.query<StaffMediaRow>(
+    `
+      SELECT
+        media_id, attraction_id, language_code, media_type,
+        file_url, caption, credit, rights_reference,
+        duration_seconds, display_order, status, approved_by, published_at
+      FROM attraction_media
+      WHERE attraction_id = $1
+      ORDER BY display_order ASC, media_id ASC
+    `,
+    [attractionId]
+  );
+  return result.rows;
+}

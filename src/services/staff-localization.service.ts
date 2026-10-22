@@ -1,6 +1,12 @@
 import {
+  translateHeritageLocalization,
+  TRANSLATION_LANGUAGES,
+  type TranslationLanguage,
+} from "../adapters/llm/gemini-translation.provider";
+import {
   findStaffLocalization,
   upsertEditableLocalization,
+  insertTranslationDraftIfAbsent,
 } from "../repositories/staff-localization.repository";
 
 import {
@@ -35,6 +41,13 @@ export class StaffLocalizationAttractionNotFoundError
   }
 }
 
+export class StaffLocalizationNotFoundError extends Error {
+  constructor() {
+    super("Localization not found");
+    this.name = "StaffLocalizationNotFoundError";
+  }
+}
+
 export class StaffLocalizationWorkflowConflictError
   extends Error {
   constructor() {
@@ -47,78 +60,11 @@ export class StaffLocalizationWorkflowConflictError
   }
 }
 
-export class StaffLocalizationNotFoundError
-  extends Error {
-  constructor() {
-    super("Localization not found");
-
-    this.name =
-      "StaffLocalizationNotFoundError";
-  }
-}
-
-export interface StaffLocalizationReadResult {
-  id: number;
-  attraction_id: number;
-  language_code: string;
-  name: string;
-  description: string;
-  source_references: unknown[];
-  status:
-    | "draft"
-    | "in_review"
-    | "published"
-    | "archived";
-  content_version: number;
-  approved_by: number | null;
-  published_at: Date | null;
-}
-
-export async function getStaffLocalization(
-  attractionId: number,
-  language: string
-): Promise<StaffLocalizationReadResult> {
-  const localization =
-    await findStaffLocalization(
-      attractionId,
-      language
-    );
-
-  if (!localization) {
-    throw new StaffLocalizationNotFoundError();
-  }
-
-  return {
-    id: Number(localization.localization_id),
-    attraction_id: Number(
-      localization.attraction_id
-    ),
-    language_code:
-      localization.language_code,
-    name: localization.name,
-    description:
-      localization.description,
-    source_references:
-      parseSourceReferences(
-        localization.source_references
-      ),
-    status: localization.status,
-    content_version:
-      localization.content_version,
-    approved_by:
-      localization.approved_by === null
-        ? null
-        : Number(
-            localization.approved_by
-          ),
-    published_at:
-      localization.published_at,
-  };
-}
-
 function parseSourceReferences(
-  value: string
+  value: string | unknown[] | null
 ): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return [];
   try {
     const parsed = JSON.parse(value);
 
@@ -128,6 +74,33 @@ function parseSourceReferences(
   } catch {
     return [];
   }
+}
+
+/** Read one localization, including unpublished content, for authenticated Staff. */
+export async function getStaffLocalization(
+  attractionId: number,
+  language: string
+): Promise<Omit<StaffLocalizationResult, "status"> & {
+  status: "draft" | "in_review" | "published" | "archived";
+}> {
+  const attraction = await findStaffAttractionById(attractionId);
+  if (!attraction) throw new StaffLocalizationAttractionNotFoundError();
+
+  const localization = await findStaffLocalization(attractionId, language);
+  if (!localization) throw new StaffLocalizationNotFoundError();
+
+  return {
+    id: Number(localization.localization_id),
+    attraction_id: Number(localization.attraction_id),
+    language_code: localization.language_code,
+    name: localization.name,
+    description: localization.description,
+    source_references: parseSourceReferences(localization.source_references),
+    status: localization.status,
+    content_version: localization.content_version,
+    approved_by: localization.approved_by === null ? null : Number(localization.approved_by),
+    published_at: localization.published_at,
+  };
 }
 
 export async function upsertStaffLocalization(
@@ -199,5 +172,91 @@ export async function upsertStaffLocalization(
           ),
     published_at:
       localization.published_at,
+  };
+}
+export class StaffLocalizationTranslationConflictError extends Error {
+  constructor(message: string) { super(message); this.name = 'StaffLocalizationTranslationConflictError'; }
+}
+
+/** Generate an unpublished draft. Staff must verify history/terminology and use the existing workflow. */
+export async function generateStaffLocalizationDraft(
+  attractionId: number, language: TranslationLanguage
+): Promise<StaffLocalizationResult> {
+  const attraction = await findStaffAttractionById(attractionId);
+  if (!attraction) throw new StaffLocalizationAttractionNotFoundError();
+  if (!(language in TRANSLATION_LANGUAGES)) {
+    throw new StaffLocalizationTranslationConflictError('Ngôn ngữ dịch không được hỗ trợ');
+  }
+  const vietnamese = await findStaffLocalization(attractionId, 'vi');
+  if (!vietnamese || vietnamese.status !== 'published') {
+    throw new StaffLocalizationTranslationConflictError('Phải xuất bản nội dung tiếng Việt trước khi tạo bản dịch');
+  }
+  if (await findStaffLocalization(attractionId, language)) {
+    throw new StaffLocalizationTranslationConflictError(
+      'Đã có bản nội dung ngôn ngữ này; hãy mở và chỉnh sửa bản hiện có, không dịch đè'
+    );
+  }
+  // AI receives source name/description only, not write instructions from visitor input.
+  const translated = await translateHeritageLocalization({
+    name: vietnamese.name, description: vietnamese.description,
+  }, language);
+  const refs = parseSourceReferences(vietnamese.source_references);
+  const created = await insertTranslationDraftIfAbsent(
+    attractionId, language, translated.name, translated.description, refs
+  );
+  if (!created) throw new StaffLocalizationTranslationConflictError('Bản dịch đã được tạo bởi yêu cầu khác');
+  return {
+    id: Number(created.localization_id),
+    attraction_id: Number(created.attraction_id),
+    language_code: created.language_code,
+    name: created.name, description: created.description,
+    source_references: parseSourceReferences(created.source_references),
+    status: 'draft', content_version: created.content_version,
+    approved_by: null, published_at: null,
+  };
+}
+
+
+/** Explicitly retranslate an existing localization. The caller confirms a
+ * published localization will become draft and temporarily disappear from User.
+ * No translation is ever auto-published by this endpoint.
+ */
+export async function regenerateStaffLocalizationDraft(
+  attractionId: number, language: TranslationLanguage
+): Promise<StaffLocalizationResult> {
+  const attraction = await findStaffAttractionById(attractionId);
+  if (!attraction) throw new StaffLocalizationAttractionNotFoundError();
+  if (!(language in TRANSLATION_LANGUAGES)) {
+    throw new StaffLocalizationTranslationConflictError('Ngôn ngữ dịch không được hỗ trợ');
+  }
+  const vietnamese = await findStaffLocalization(attractionId, 'vi');
+  if (!vietnamese || vietnamese.status !== 'published') {
+    throw new StaffLocalizationTranslationConflictError('Phải xuất bản lại nội dung tiếng Việt trước khi dịch');
+  }
+  const current = await findStaffLocalization(attractionId, language);
+  if (!current) {
+    throw new StaffLocalizationTranslationConflictError('Chưa có bản dịch; hãy dùng Dịch bằng AI');
+  }
+  if (!['draft', 'published'].includes(current.status)) {
+    throw new StaffLocalizationTranslationConflictError('Chỉ dịch lại bản draft/published; nếu chờ duyệt phải từ chối trước');
+  }
+  const translated = await translateHeritageLocalization({
+    name: vietnamese.name,
+    description: vietnamese.description,
+  }, language);
+  const saved = await upsertEditableLocalization(
+    attractionId, language, translated.name, translated.description,
+    parseSourceReferences(vietnamese.source_references)
+  );
+  if (!saved) {
+    throw new StaffLocalizationWorkflowConflictError();
+  }
+  return {
+    id: Number(saved.localization_id), attraction_id: Number(saved.attraction_id),
+    language_code: saved.language_code, name: saved.name,
+    description: saved.description,
+    source_references: parseSourceReferences(saved.source_references),
+    status: 'draft', content_version: saved.content_version,
+    approved_by: null, published_at: null,
   };
 }
