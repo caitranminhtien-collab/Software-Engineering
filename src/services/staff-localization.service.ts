@@ -10,6 +10,12 @@ import {
 } from "../repositories/staff-localization.repository";
 
 import {
+  findActiveLocalizationRevision,
+  savePublishedLocalizationRevisionDraft,
+  type StaffLocalizationRevisionRow,
+} from "../repositories/staff-localization-revision.repository";
+
+import {
   findStaffAttractionById,
 } from "../repositories/staff-attraction.repository";
 
@@ -20,7 +26,10 @@ export interface UpsertStaffLocalizationInput {
 }
 
 export interface StaffLocalizationResult {
+  /** Existing localization ID (NOT revision ID). */
   id: number;
+  /** Present only when editing a previously published localization. */
+  revision_id?: number;
   attraction_id: number;
   language_code: string;
   name: string;
@@ -76,6 +85,26 @@ function parseSourceReferences(
   }
 }
 
+/** Revision is separate from the live content served to visitors. */
+function revisionToDraftResult(
+  publicLocalizationId: string,
+  revision: StaffLocalizationRevisionRow
+): StaffLocalizationResult {
+  return {
+    id: Number(publicLocalizationId),
+    revision_id: Number(revision.revision_id),
+    attraction_id: Number(revision.attraction_id),
+    language_code: revision.language_code,
+    name: revision.name,
+    description: revision.description,
+    source_references: parseSourceReferences(revision.source_references),
+    status: "draft",
+    content_version: Number(revision.base_content_version ?? 0) + 1,
+    approved_by: null,
+    published_at: null,
+  };
+}
+
 /** Read one localization, including unpublished content, for authenticated Staff. */
 export async function getStaffLocalization(
   attractionId: number,
@@ -88,6 +117,17 @@ export async function getStaffLocalization(
 
   const localization = await findStaffLocalization(attractionId, language);
   if (!localization) throw new StaffLocalizationNotFoundError();
+
+  // Staff sees the working copy; public APIs still read the published record.
+  if (localization.status === "published") {
+    const revision = await findActiveLocalizationRevision(attractionId, language);
+    if (revision) {
+      return {
+        ...revisionToDraftResult(localization.localization_id, revision),
+        status: revision.status as "draft" | "in_review",
+      };
+    }
+  }
 
   return {
     id: Number(localization.localization_id),
@@ -106,7 +146,8 @@ export async function getStaffLocalization(
 export async function upsertStaffLocalization(
   attractionId: number,
   language: string,
-  input: UpsertStaffLocalizationInput
+  input: UpsertStaffLocalizationInput,
+  createdBy: number
 ): Promise<StaffLocalizationResult> {
   const attraction =
     await findStaffAttractionById(
@@ -131,6 +172,20 @@ export async function upsertStaffLocalization(
     throw new StaffLocalizationWorkflowConflictError();
   }
 
+  if (current?.status === "published") {
+    const revision = await savePublishedLocalizationRevisionDraft(
+      attractionId,
+      language,
+      input.name,
+      input.description,
+      input.sourceReferences,
+      createdBy
+    );
+    if (!revision) throw new StaffLocalizationWorkflowConflictError();
+    return revisionToDraftResult(current.localization_id, revision);
+  }
+
+  // New localization and never-published drafts retain their existing workflow.
   const localization =
     await upsertEditableLocalization(
       attractionId,
@@ -217,12 +272,14 @@ export async function generateStaffLocalizationDraft(
 }
 
 
-/** Explicitly retranslate an existing localization. The caller confirms a
- * published localization will become draft and temporarily disappear from User.
- * No translation is ever auto-published by this endpoint.
+/** Explicitly retranslate an existing localization. When already published,
+ * stage the new translation separately; public content stays visible.
+ * No translation is auto-published by this endpoint.
  */
 export async function regenerateStaffLocalizationDraft(
-  attractionId: number, language: TranslationLanguage
+  attractionId: number,
+  language: TranslationLanguage,
+  createdBy: number
 ): Promise<StaffLocalizationResult> {
   const attraction = await findStaffAttractionById(attractionId);
   if (!attraction) throw new StaffLocalizationAttractionNotFoundError();
@@ -244,6 +301,19 @@ export async function regenerateStaffLocalizationDraft(
     name: vietnamese.name,
     description: vietnamese.description,
   }, language);
+  if (current.status === "published") {
+    const revision = await savePublishedLocalizationRevisionDraft(
+      attractionId,
+      language,
+      translated.name,
+      translated.description,
+      parseSourceReferences(vietnamese.source_references),
+      createdBy
+    );
+    if (!revision) throw new StaffLocalizationWorkflowConflictError();
+    return revisionToDraftResult(current.localization_id, revision);
+  }
+
   const saved = await upsertEditableLocalization(
     attractionId, language, translated.name, translated.description,
     parseSourceReferences(vietnamese.source_references)

@@ -20,6 +20,15 @@ import type {
   StaffWorkflowResource,
 } from "../validators/staff-workflow.validator";
 
+import {
+  findActiveRevisionByLocalizationId,
+  submitLocalizationRevision,
+  reviewLocalizationRevision,
+  publishLocalizationRevision,
+  LocalizationRevisionInvalidContentError,
+} from "../repositories/staff-localization-revision.repository";
+
+
 function isAllowedMediaFileUrl(
   fileUrl: string
 ): boolean {
@@ -166,6 +175,23 @@ export async function submitStaffWorkflow(
     throw new StaffWorkflowNotFoundError();
   }
 
+  // Existing published content stays live. The old localization ID is
+  // retained by the Admin UI; workflow is routed to its working revision.
+  if (resource === "localizations" && current.status === "published") {
+    const active = await findActiveRevisionByLocalizationId(resourceId);
+    if (!active || active.status !== "draft") {
+      throw new StaffWorkflowConflictError();
+    }
+    const changed = await submitLocalizationRevision(resourceId);
+    if (!changed) throw new StaffWorkflowConflictError();
+    return {
+      id: resourceId,
+      resource,
+      status: changed.status,
+      version: Number(changed.base_content_version ?? 0) + 1,
+    };
+  }
+
   if (current.status !== "draft") {
     throw new StaffWorkflowConflictError();
   }
@@ -213,6 +239,21 @@ export async function reviewStaffWorkflow(
 
   if (!current) {
     throw new StaffWorkflowNotFoundError();
+  }
+
+  if (resource === "localizations" && current.status === "published") {
+    const active = await findActiveRevisionByLocalizationId(resourceId);
+    if (!active || active.status !== "in_review") {
+      throw new StaffWorkflowReviewConflictError();
+    }
+    const reviewed = await reviewLocalizationRevision(resourceId, decision);
+    if (!reviewed) throw new StaffWorkflowReviewConflictError();
+    return {
+      id: resourceId,
+      resource,
+      status: reviewed.status,
+      version: Number(reviewed.base_content_version ?? 0) + 1,
+    };
   }
 
   if (current.status !== "in_review") {
@@ -380,6 +421,36 @@ export async function publishStaffWorkflow(
 
   if (!current) {
     throw new StaffWorkflowNotFoundError();
+  }
+
+  if (resource === "localizations" && current.status === "published") {
+    const active = await findActiveRevisionByLocalizationId(resourceId);
+    if (!active || active.status !== "in_review") {
+      throw new StaffWorkflowReviewConflictError();
+    }
+
+    // This is a staged revision, not the current published localization.
+    // The repository validates content and base version again under locks,
+    // then switches the public content and marks revision published atomically.
+    try {
+      const published = await publishLocalizationRevision(resourceId, approvedBy);
+      if (!published || published.approved_by === null || !published.published_at) {
+        throw new StaffWorkflowReviewConflictError();
+      }
+      return {
+        id: resourceId,
+        resource,
+        status: "published",
+        version: Number(published.version),
+        approved_by: Number(published.approved_by),
+        published_at: published.published_at,
+      };
+    } catch (error) {
+      if (error instanceof LocalizationRevisionInvalidContentError) {
+        throw new StaffPublishReadinessError(error.message);
+      }
+      throw error;
+    }
   }
 
   if (current.status !== "in_review") {

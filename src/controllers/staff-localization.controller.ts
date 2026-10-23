@@ -49,10 +49,16 @@ export async function getStaffLocalizationController(
 }
 
 export async function upsertStaffLocalizationController(
-  _req: Request,
+  req: Request,
   res: Response
 ): Promise<void> {
   try {
+    const staffId = req.session.staffId;
+    if (!staffId) {
+      res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Staff authentication required" } });
+      return;
+    }
+
     const {
       attractionId,
       language,
@@ -67,7 +73,8 @@ export async function upsertStaffLocalizationController(
       await upsertStaffLocalization(
         attractionId,
         language,
-        body
+        body,
+        staffId
       );
 
     res.status(200).json({
@@ -138,10 +145,15 @@ export async function generateStaffLocalizationController(_req: Request, res: Re
 }
 
 
-export async function regenerateStaffLocalizationController(_req: Request, res: Response): Promise<void> {
+export async function regenerateStaffLocalizationController(req: Request, res: Response): Promise<void> {
   const {attractionId, language} = res.locals.staffLocalizationParams as StaffLocalizationParams;
   try {
-    const draft = await regenerateStaffLocalizationDraft(attractionId, language as TranslationLanguage);
+    const staffId = req.session.staffId;
+    if (!staffId) {
+      res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Staff authentication required" } });
+      return;
+    }
+    const draft = await regenerateStaffLocalizationDraft(attractionId, language as TranslationLanguage, staffId);
     res.status(200).json({data: draft});
   } catch (error) {
     if (error instanceof StaffLocalizationAttractionNotFoundError ||
