@@ -1600,6 +1600,79 @@ async function sendVisitorAnalyticsEvent(payload) {
     return false;
   }
 }
+// M3.2: Approximate active browsers; only count visible public tabs.
+const huePresence = {id: null, busy: false};
+function hueBrowserPresenceId() {
+  if (huePresence.id) return huePresence.id;
+  const key = 'hue-presence-browser-v1';
+  try {
+    const old = localStorage.getItem(key);
+    if (old && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(old)) {
+      huePresence.id = old;
+      return old;
+    }
+  } catch {}
+  // Do not reuse Visitor/Staff credentials as an identifier.
+  let id = null;
+  if (globalThis.crypto?.randomUUID) id = crypto.randomUUID();
+  else if (globalThis.crypto?.getRandomValues) {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 15) | 64;
+    bytes[8] = (bytes[8] & 63) | 128;
+    id = [...bytes].map((n,i)=>n.toString(16).padStart(2,'0') + ([3,5,7,9].includes(i)?'-':'')).join('');
+  }
+  if (!id) return null;
+  huePresence.id = id;
+  try { localStorage.setItem(key,id); } catch {}
+  return id;
+}
+async function huePresenceHeartbeat() {
+  if (IS_ADMIN || document.hidden || huePresence.busy) return;
+  const browserId = hueBrowserPresenceId();
+  if (!browserId) return;
+  huePresence.busy = true;
+  try {
+    const beat = async token => fetch('/api/v1/visitor-presence/heartbeat', {
+      method:'POST', cache:'no-store',
+      headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+      body:JSON.stringify({browser_id:browserId})
+    });
+    let token = await audioVisitorToken();
+    let response = await beat(token);
+    if (response.status === 401) {
+      visitorAudioTokenPromise = null;
+      token = await audioVisitorToken();
+      response = await beat(token);
+    }
+    if (!response.ok) console.warn('[Visitor Presence] heartbeat HTTP', response.status);
+  } catch (error) { console.warn('[Visitor Presence] not recorded:', error); }
+  finally { huePresence.busy = false; }
+}
+
+const hueLiveVisitors = {count:null,status:'loading'};
+async function hueRefreshLiveVisitors() {
+  if (!IS_ADMIN || document.hidden) return;
+  try {
+    const response = await fetch('/api/v1/staff/visitor-presence', {
+      cache:'no-store', credentials:'same-origin', headers:{Accept:'application/json'}
+    });
+    if (!response.ok) throw new Error('HTTP '+response.status);
+    const payload = await response.json();
+    if (!Number.isSafeInteger(payload?.data?.active_visitors) || payload.data.active_visitors < 0) throw new Error('Invalid response');
+    hueLiveVisitors.count = payload.data.active_visitors;
+    hueLiveVisitors.status = 'ready';
+  } catch(error) {
+    hueLiveVisitors.count = null;
+    hueLiveVisitors.status = 'error';
+  }
+  const number = document.getElementById('hue-live-visitor-count');
+  const status = document.getElementById('hue-live-visitor-status');
+  if (number) number.textContent = hueLiveVisitors.status === 'ready' ? hueLiveVisitors.count.toLocaleString('vi-VN') : '—';
+  if (status) status.textContent = hueLiveVisitors.status === 'ready'
+    ? 'Trình duyệt hoạt động trong 75 giây qua · tự cập nhật 10 giây'
+    : 'Chưa thể tải dữ liệu trực tuyến';
+}
+
 // Analytics from authenticated Staff-only backend. Never expose SQL/report data via Visitor APIs.
 const staffAnalytics = {status:'idle',days:0,data:null,error:''};
 let staffAnalyticsRequest = 0;
@@ -1691,7 +1764,7 @@ function renderAdmin(){
 if(state.adminTab==='content')return top+`<input id="admin-search" class="admin-search" value="${esc(state.adminSearch)}" placeholder="Tìm di tích rồi nhấn Enter…" aria-label="Tìm nội dung quản trị">`+renderAdminContent();
 if(state.adminTab==='reports')return top+`<div class="admin-report-grid"><article class="admin-card"><div class="card-top"><h2>Lượt mở di tích theo ngày</h2><span>${state.adminPeriod} ngày qua</span></div><strong class="admin-number">${numberOrDash(d.views)}</strong>${adminChart(d)}</article>${adminLanguages(d)}${adminRanking(d)}<article class="admin-card"><h2>Phạm vi dữ liệu</h2><div class="report-facts"><p><span>Di tích trong thư viện</span><b>${places.length}</b></p><p><span>Lượt bắt đầu tuyến</span><b>${numberOrDash(d.starts)}</b></p><p><span>Bản nháp trên thiết bị</span><b>${Object.values(state.drafts).filter(x=>x.status==='Bản nháp').length}</b></p><p><span>Nội dung chờ duyệt</span><b>${Object.values(state.drafts).filter(x=>x.status==='Chờ duyệt').length}</b></p></div><p class="admin-muted">Bản nháp và công việc ở phần này vẫn lấy từ thiết bị này. Nút Xuất CSV sử dụng nguồn và khoảng thời gian đang chọn.</p></article></div>`;
 if(state.adminTab==='tasks')return top+`<article class="admin-card admin-tasks-full"><div class="card-top"><h2>Công việc trên thiết bị này · ${state.tasks.filter(t=>!t.done).length} chưa hoàn thành</h2><button class="button small" id="add-admin-task">+ Thêm công việc</button></div>${adminTaskList()}</article>`;
-return top+`<div class="admin-dashboard-grid"><article class="admin-card admin-visits"><div class="card-top"><h2>${icon('staff')} Lượt mở di tích</h2><button class="text-button" data-admin-tab="reports">Chi tiết ${icon('arrow')}</button></div><strong class="admin-number">${numberOrDash(d.views)}</strong><p class="admin-muted">Tổng ${state.adminPeriod} ngày qua</p>${adminChart(d)}</article><article class="admin-spotlight"><div><span class="eyebrow">HUE HERITAGE INTELLIGENCE</span><h2>Di sản kết nối.<br>Trải nghiệm lan tỏa.</h2><p>Một không gian quản lý cho những câu chuyện của Huế.</p></div><div class="admin-ribbon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><button class="button small" data-admin-tab="content">Quản lý nội dung ${icon('arrow')}</button></article><article class="admin-card admin-agenda"><div class="card-top"><h2>${icon('calendar')} Lịch biên tập</h2></div><div class="admin-today"><strong>${new Date().getDate()}</strong><span>Tháng ${new Date().getMonth()+1}<br>${new Date().getFullYear()}</span></div>${adminTaskList(2)}<button class="button small" id="add-admin-task">+ Thêm công việc</button></article><article class="admin-card admin-kpi"><h2>${icon('headphones')} Lượt nghe thuyết minh</h2><strong class="admin-number">${numberOrDash(d.listens)}</strong><p class="admin-muted">${state.adminPeriod} ngày qua · 7 ngôn ngữ TTS</p><button class="text-button" data-admin-tab="reports">Xem phân bố ${icon('arrow')}</button></article><article class="admin-card admin-kpi"><h2>${icon('route')} Lượt bắt đầu tuyến</h2><strong class="admin-number">${numberOrDash(d.starts)}</strong><p class="admin-muted">${server?'Lượt bắt đầu các tuyến published':routes.length+' tuyến mẫu trong thư viện'}</p><button class="text-button" data-admin-tab="reports">Xem chi tiết ${icon('arrow')}</button></article><article class="admin-card admin-heatmap"><div class="card-top"><h2>Nhịp khám phá</h2><span>Lượt mở di tích / ngày</span></div><div class="heatmap-grid">${d.series.map((n,i)=>`<div style="--intensity:${n?Math.max(.2,n/Math.max(1,...d.series)):0}" title="${d.dates[i]}: ${n} lượt xem"><b>${n}</b><small>${d.dates[i].slice(-2)}</small></div>`).join('')}</div><p class="admin-muted">${d.dates[0]} — ${d.dates.at(-1)} · ${server?'PostgreSQL':demo?'Số liệu mẫu':'Hoạt động trên thiết bị'}</p></article><article class="admin-card admin-kpi"><h2>${icon('book')} Thư viện di sản</h2><strong class="admin-number">${places.length}</strong><p class="admin-muted">${Object.keys(state.drafts).length} bản chỉnh sửa cục bộ</p><button class="text-button" data-admin-tab="content">Biên tập ${icon('arrow')}</button></article><article class="admin-card admin-kpi"><h2>${icon('check')} Chờ duyệt nội dung</h2><strong class="admin-number">${Object.values(state.drafts).filter(x=>x.status==='Chờ duyệt').length}</strong><p class="admin-muted">Trạng thái trên thiết bị này</p><button class="text-button" data-admin-review>Xem danh sách ${icon('arrow')}</button></article><div class="admin-ranking-wrap">${adminRanking(d)}</div></div><p class="admin-muted admin-footnote">Khu vực Admin yêu cầu phiên Staff backend. Phần thống kê PostgreSQL chỉ mở cho Admin. Các công việc và bản nháp cục bộ vẫn chỉ được lưu trên thiết bị này.</p>`}
+return top+`<div class="admin-dashboard-grid"><article class="admin-card admin-visits"><div class="card-top"><h2>${icon('staff')} Lượt mở di tích</h2><button class="text-button" data-admin-tab="reports">Chi tiết ${icon('arrow')}</button></div><strong class="admin-number">${numberOrDash(d.views)}</strong><p class="admin-muted">Tổng ${state.adminPeriod} ngày qua</p>${adminChart(d)}</article><article class="admin-spotlight"><div><span class="eyebrow">HUE HERITAGE INTELLIGENCE</span><h2>Di sản kết nối.<br>Trải nghiệm lan tỏa.</h2><p>Một không gian quản lý cho những câu chuyện của Huế.</p></div><div class="admin-ribbon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><button class="button small" data-admin-tab="content">Quản lý nội dung ${icon('arrow')}</button></article><article class="admin-card admin-agenda"><div class="card-top"><h2>${icon('calendar')} Lịch biên tập</h2></div><div class="admin-today"><strong>${new Date().getDate()}</strong><span>Tháng ${new Date().getMonth()+1}<br>${new Date().getFullYear()}</span></div>${adminTaskList(2)}<button class="button small" id="add-admin-task">+ Thêm công việc</button></article><article class="admin-card admin-kpi"><h2>${icon('staff')} Khách đang truy cập</h2><strong class="admin-number" id="hue-live-visitor-count">${hueLiveVisitors.status==='ready'?hueLiveVisitors.count.toLocaleString('vi-VN'):'—'}</strong><p class="admin-muted" id="hue-live-visitor-status">${hueLiveVisitors.status==='ready'?'Trình duyệt hoạt động trong 75 giây qua · tự cập nhật 10 giây':'Đang lấy số liệu trực tuyến…'}</p></article><article class="admin-card admin-kpi"><h2>${icon('headphones')} Lượt nghe thuyết minh</h2><strong class="admin-number">${numberOrDash(d.listens)}</strong><p class="admin-muted">${state.adminPeriod} ngày qua · 7 ngôn ngữ TTS</p><button class="text-button" data-admin-tab="reports">Xem phân bố ${icon('arrow')}</button></article><article class="admin-card admin-kpi"><h2>${icon('route')} Lượt bắt đầu tuyến</h2><strong class="admin-number">${numberOrDash(d.starts)}</strong><p class="admin-muted">${server?'Lượt bắt đầu các tuyến published':routes.length+' tuyến mẫu trong thư viện'}</p><button class="text-button" data-admin-tab="reports">Xem chi tiết ${icon('arrow')}</button></article><article class="admin-card admin-heatmap"><div class="card-top"><h2>Nhịp khám phá</h2><span>Lượt mở di tích / ngày</span></div><div class="heatmap-grid">${d.series.map((n,i)=>`<div style="--intensity:${n?Math.max(.2,n/Math.max(1,...d.series)):0}" title="${d.dates[i]}: ${n} lượt xem"><b>${n}</b><small>${d.dates[i].slice(-2)}</small></div>`).join('')}</div><p class="admin-muted">${d.dates[0]} — ${d.dates.at(-1)} · ${server?'PostgreSQL':demo?'Số liệu mẫu':'Hoạt động trên thiết bị'}</p></article><article class="admin-card admin-kpi"><h2>${icon('book')} Thư viện di sản</h2><strong class="admin-number">${places.length}</strong><p class="admin-muted">${Object.keys(state.drafts).length} bản chỉnh sửa cục bộ</p><button class="text-button" data-admin-tab="content">Biên tập ${icon('arrow')}</button></article><article class="admin-card admin-kpi"><h2>${icon('check')} Chờ duyệt nội dung</h2><strong class="admin-number">${Object.values(state.drafts).filter(x=>x.status==='Chờ duyệt').length}</strong><p class="admin-muted">Trạng thái trên thiết bị này</p><button class="text-button" data-admin-review>Xem danh sách ${icon('arrow')}</button></article><div class="admin-ranking-wrap">${adminRanking(d)}</div></div><p class="admin-muted admin-footnote">Khu vực Admin yêu cầu phiên Staff backend. Phần thống kê PostgreSQL chỉ mở cho Admin. Các công việc và bản nháp cục bộ vẫn chỉ được lưu trên thiết bị này.</p>`}
 function exportAdmin(){
   if(state.adminMode==='server' && (staffAnalytics.status!=='ready'||staffAnalytics.days!==state.adminPeriod)) {
     toast('Chưa tải được dữ liệu PostgreSQL để xuất CSV.');return;
@@ -2088,4 +2161,5 @@ document.addEventListener('submit',e=>{if(IS_ADMIN&&e.target.id==='staff-route-f
 window.addEventListener('hashchange',()=>{const previous=state.page;if(openingActive)finishOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');render();if(previous!==state.page)playCloudTransition($('#breadcrumb').textContent);window.scrollTo({top:0,behavior:'instant'});$('#content').focus({preventScroll:true})});window.addEventListener('pagehide',()=>{clearTimeout(cloudExitTimer);const cloud=$('#cloud-transition');if(cloud)cloud.hidden=true;clearInterval(promoTimer);document.querySelectorAll('audio[data-hue-real-audio]').forEach(a => a.pause());speechSynthesisSafe()?.cancel()});
 if(!IS_ADMIN){injectPublicRouteStyles();injectHeritageExplorerStyles();}if(!IS_ADMIN)initOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');$('#menu-toggle').innerHTML=icon('menu');$('#search-icon').innerHTML=icon('search');if($('#top-popular'))$('#top-popular').innerHTML=icon('trend');render();loadAttractionsFromBackend();if (!IS_ADMIN) {
   loadPublishedRoutesFromBackend();
-};if(IS_ADMIN){loadStaffAttractions();void loadStaffAnalytics();}
+};if(IS_ADMIN){loadStaffAttractions();void loadStaffAnalytics();void hueRefreshLiveVisitors();setInterval(()=>{void hueRefreshLiveVisitors()},10000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)void hueRefreshLiveVisitors()});}
+else {void huePresenceHeartbeat();setInterval(()=>{void huePresenceHeartbeat()},25000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)void huePresenceHeartbeat()});}

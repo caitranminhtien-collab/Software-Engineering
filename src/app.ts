@@ -26,6 +26,8 @@ import visitorEventRoutes from "./routes/visitor-event.routes";
 import audioPlayRoutes from "./routes/audio-play.routes";
 import chatRoutes from "./routes/chat.routes";
 import locationSuggestionRoutes from "./routes/location-suggestion.routes";
+import visitorPresenceRoutes from "./routes/visitor-presence.routes";
+import staffVisitorPresenceRoutes from "./routes/staff-visitor-presence.routes";
 
 import staffAuthRoutes from "./routes/staff-auth.routes";
 import staffAttractionRoutes from "./routes/staff-attraction.routes";
@@ -163,6 +165,8 @@ app.use(
   locationSuggestionRoutes
 );
 
+app.use("/api/v1/visitor-presence", visitorPresenceRoutes);
+
 app.use(
   "/api/v1/staff/auth",
   staffAuthRoutes
@@ -192,6 +196,8 @@ app.use(
   "/api/v1/staff/analytics",
   staffAnalyticsRoutes
 );
+
+app.use("/api/v1/staff/visitor-presence", staffVisitorPresenceRoutes);
 
 app.use(
   "/api/v1/staff",
