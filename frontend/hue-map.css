@@ -59,3 +59,12 @@
 .hue-data-state{padding:20px;border:1px solid #e5d1bb;border-radius:18px}.hue-data-state p{line-height:1.6}
 .hue-promo-no-photo{position:absolute;inset:0;background:linear-gradient(140deg,#5e483b,#b7966b)}
 @media(max-width:600px){.hue-history-panel{padding:12px}.map-switch-row{flex-wrap:wrap}.hue-history-actions .button{width:100%}}
+
+/* M4.0 Browser TTS Controls */
+.hue-tts-settings{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:18px 0 12px;padding:14px;border:1px solid rgba(108,74,44,.18);border-radius:15px;background:rgba(255,251,245,.6)}
+.hue-tts-field{display:flex;flex-direction:column;gap:6px;min-width:150px;flex:1;color:#60452d;font-size:.88rem;font-weight:600}
+.hue-tts-field select{width:100%;min-height:40px;border-radius:9px;border:1px solid #cbb9a3;background:white;color:#33291e;padding:7px}
+.hue-tts-check{display:flex;align-items:center;gap:9px;font-size:.91rem;cursor:pointer;color:inherit;line-height:1.4;margin:8px 0}
+.hue-tts-check input{width:17px;height:17px;accent-color:#86613e;flex-shrink:0}
+.hue-location-panel>.hue-tts-check{padding:7px 0}
+@media(max-width:640px){.hue-tts-field{min-width:130px}.hue-tts-settings{gap:10px}}

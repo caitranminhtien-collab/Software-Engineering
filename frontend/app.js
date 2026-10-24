@@ -1050,6 +1050,7 @@ function renderAudio() {
           <select id="audio-language" aria-label="Ngôn ngữ thuyết minh">
             ${narrationLocales.map(([locale,label])=>`<option value="${locale}" ${state.audioLanguage===locale?'selected':''}>${label}</option>`).join('')}
           </select></label></div>
+      ${hueTtsControlsHtml()}
       <div class="audio-art">${icon('building')}</div>
       <h2>${esc(narration?.name || p.name)}</h2>${controls}</section>
       <div><article class="glass transcript"><div class="card-top"><h2>Nội dung thuyết minh</h2>${icon('book')}</div>
@@ -1881,6 +1882,94 @@ function edit(id){const p=byId(id),d=state.drafts[id]||{};openModal(`<p class="e
 function formatTime(s){return Math.floor(s/60).toString().padStart(2,'0')+':'+Math.floor(s%60).toString().padStart(2,'0')}
 function stopAudio(update=true){document.querySelectorAll('audio[data-hue-real-audio]').forEach(a=>a.pause());speechSynthesisSafe()?.cancel();clearInterval(timer);hueGpsTour.autoSpeaking=false;state.playing=false;state.paused=false;state.progress=0;state.elapsed=0;state.utterance=null;if(update){if(['audio','home'].includes(state.page))render();else updateDock()}}
 function speechSynthesisSafe(){return 'speechSynthesis'in window?window.speechSynthesis:null}
+// M4.0 Browser TTS Voice, Rate & GPS Opt-In
+// On-device preferences only. GPS and automatic narration remain separately opt-in.
+const hueTtsPrefs={
+  rate:[0.8,0.9,1,1.1,1.2,1.3].includes(Number(read('hue-tts-rate-v1',0.9)))?Number(read('hue-tts-rate-v1',0.9)):0.9,
+  voiceByLocale:read('hue-tts-voice-map-v1',{}),
+  autoGps:false
+};
+if(!hueTtsPrefs.voiceByLocale || typeof hueTtsPrefs.voiceByLocale!=='object' || Array.isArray(hueTtsPrefs.voiceByLocale))hueTtsPrefs.voiceByLocale={};
+function hueTtsVoiceKey(v){return [v.lang,v.name,v.voiceURI].map(x=>String(x||'')).join('|')}
+function hueTtsVoices(){
+  const synth=speechSynthesisSafe();
+  const locale=state.audioLanguage.toLowerCase(),base=narrationLanguage();
+  const all=synth?Array.from(synth.getVoices()):[];
+  const exact=all.filter(v=>String(v.lang).toLowerCase()===locale);
+  return exact.length?exact:all.filter(v=>String(v.lang).toLowerCase().split('-')[0]===base);
+}
+function hueTtsSelectedVoice(){
+  const voices=hueTtsVoices();
+  return voices.find(v=>hueTtsVoiceKey(v)===hueTtsPrefs.voiceByLocale[state.audioLanguage])||
+    voices.find(v=>v.default)||voices[0]||null;
+}
+function hueTtsVoiceSelectHtml(){
+  const voices=hueTtsVoices(),selected=hueTtsSelectedVoice();
+  return `<select id="audio-voice" aria-label="Chọn giọng đọc" ${voices.length?'':'disabled'}>
+    ${voices.length?voices.map(v=>`<option value="${esc(hueTtsVoiceKey(v))}" ${v===selected?'selected':''}>${esc(v.name)} (${esc(v.lang)})</option>`).join(''):'<option>Thiết bị chưa có giọng phù hợp</option>'}
+  </select>`;
+}
+function hueTtsAutoGpsHtml(){return `<label class="hue-tts-check"><input type="checkbox" id="hue-tts-auto-gps" ${hueTtsPrefs.autoGps?'checked':''}><span>Tự thuyết minh khi đến gần di tích</span></label>`}
+function hueTtsControlsHtml(){
+ return `<div class="hue-tts-settings" aria-label="Tùy chỉnh giọng thuyết minh">
+   <label class="hue-tts-field"><span>Giọng đọc</span>${hueTtsVoiceSelectHtml()}</label>
+   <label class="hue-tts-field"><span>Tốc độ</span><select id="audio-speed" aria-label="Tốc độ giọng đọc">
+     ${[0.8,0.9,1,1.1,1.2,1.3].map(n=>`<option value="${n}" ${n===hueTtsPrefs.rate?'selected':''}>${n.toFixed(1)}×</option>`).join('')}
+   </select></label>
+   <button class="button outline small" type="button" id="hue-tts-preview">Nghe thử giọng</button>
+   ${hueTtsAutoGpsHtml()}
+ </div>`;
+}
+function hueTtsRefreshVoices(){
+  const select=document.getElementById('audio-voice');
+  if(select) select.outerHTML=hueTtsVoiceSelectHtml();
+}
+function hueTtsPreview(){
+  const synth=speechSynthesisSafe(),p=byId(state.trackId),n=publishedNarration(p),v=hueTtsSelectedVoice();
+  if(!synth||typeof SpeechSynthesisUtterance==='undefined'||!v){toast('Thiết bị chưa có giọng đọc phù hợp.');return}
+  if(!n?.description){toast('Di tích này chưa có nội dung thuyết minh cho ngôn ngữ đã chọn.');return}
+  stopAudio(false); // do not record a sample as an actual narrated visit
+  const u=new SpeechSynthesisUtterance(n.description.slice(0,180));
+  u.voice=v;u.lang=state.audioLanguage;u.rate=hueTtsPrefs.rate;
+  u.onerror=e=>{if(!['interrupted','canceled'].includes(e.error))toast('Không nghe thử được trên trình duyệt này.');};
+  synth.speak(u);
+}
+function hueTtsRestartIfPlaying(){
+  if(!state.playing)return;
+  stopAudio(false);playAudio(); // browser TTS does not change voice/speed mid-sentence
+}
+function hueTtsChange(e){
+  if(IS_ADMIN)return;
+  const el=e.target;
+  if(el?.id==='audio-voice'){
+    const chosen=hueTtsVoices().find(v=>hueTtsVoiceKey(v)===el.value);
+    if(!chosen)return;
+    hueTtsPrefs.voiceByLocale[state.audioLanguage]=hueTtsVoiceKey(chosen);
+    write('hue-tts-voice-map-v1',hueTtsPrefs.voiceByLocale);
+    hueTtsRestartIfPlaying();
+  } else if(el?.id==='audio-speed'){
+    const next=Number(el.value);
+    if(![0.8,0.9,1,1.1,1.2,1.3].includes(next))return;
+    hueTtsPrefs.rate=next;write('hue-tts-rate-v1',next);hueTtsRestartIfPlaying();
+  } else if(el?.id==='hue-tts-auto-gps'){
+    hueTtsPrefs.autoGps=Boolean(el.checked);
+    if(!hueTtsPrefs.autoGps&&hueGpsTour.autoSpeaking)stopAudio(false);
+    hueGpsTour.lastVisited=null;hueGpsTour.lastVisitAt=0;hueGpsTour.lastRequest=0;
+    if(hueTtsPrefs.autoGps&&hueGpsTour.mode==='simulation'&&hueGpsTour.testNear){
+      const p=places.find(x=>x.id===hueGpsTour.testSlug&&x.dbId);
+      if(p)hueGpsListenTo(p,true);
+    }
+    if(state.page==='map')hueRefreshGpsUi();else if(state.page==='audio')render();
+  }
+}
+if(!IS_ADMIN){
+  document.addEventListener('change',hueTtsChange,true);
+  document.addEventListener('click',e=>{if(e.target.closest?.('#hue-tts-preview'))hueTtsPreview()},true);
+  const synth=speechSynthesisSafe();
+  synth?.addEventListener?.('voiceschanged',hueTtsRefreshVoices);
+}
+
+
 function selectTrack(id) {
   stopAudio(false);
   state.trackId=id;
@@ -1907,16 +1996,14 @@ function playAudio() {
     if(state.page!=='audio')navigate('audio');
     return;
   }
-  const voices=synth.getVoices();
   const language=narrationLanguage();
-  const selected=voices.find(v=>v.lang.toLowerCase()===state.audioLanguage.toLowerCase()) ||
-    voices.find(v=>v.lang.toLowerCase().split('-')[0]===language);
+  const selected=hueTtsSelectedVoice();
   if (!selected) {
     toast('Thiết bị chưa có giọng đọc cho ngôn ngữ này. Hãy cài thêm giọng hệ thống hoặc thử trình duyệt khác.');
     return;
   }
   const u=new SpeechSynthesisUtterance(narration.description);
-  u.lang=state.audioLanguage;u.voice=selected;u.rate=.9;
+  u.lang=state.audioLanguage;u.voice=selected;u.rate=hueTtsPrefs.rate;
   // SpeechSynthesisUtterance.start fires only when speech actually begins.
   // Capture the ID/language now; changing controls later cannot alter this event.
   const spokenAttractionId = Number(p.dbId);
@@ -1936,8 +2023,9 @@ function playAudio() {
   };
   u.onboundary=e=>{state.progress=Math.min(100,(e.charIndex/Math.max(1,u.text.length))*100);const bar=$('#audio-progress');if(bar)bar.style.setProperty('--progress',state.progress+'%');};
   u.onend=()=>{clearInterval(timer);hueGpsTour.autoSpeaking=false;state.playing=false;state.paused=false;state.progress=100;if(['home','audio'].includes(state.page))render();else updateDock();};
-  u.onerror=e=>{if(['canceled','interrupted'].includes(e.error))return;stopAudio();toast('Chưa phát được giọng đọc.');};
+  u.onerror=e=>{if(['canceled','interrupted'].includes(e.error))return;stopAudio();toast(e.error==='not-allowed'?'Trình duyệt chặn tự phát. Hãy bấm Nghe để bắt đầu.':'Chưa phát được giọng đọc.');};
   if (!simulatedSpeech) trackEvent('audio',p.id,state.audioLanguage);
+  synth.cancel(); // replace a previous voice preview instead of queuing behind it
   state.utterance=u;state.playing=true;state.paused=false;audioStarted=Date.now();synth.speak(u);
   timer=setInterval(()=>{if(!state.paused){state.elapsed=(Date.now()-audioStarted)/1000;if($('#audio-elapsed'))$('#audio-elapsed').textContent=formatTime(state.elapsed);}},500);
   if(['home','audio'].includes(state.page))render();else updateDock();
@@ -2039,8 +2127,9 @@ function hueGpsControlsHtml() {
     <div class="hue-location-header"><div><span class="hue-location-eyebrow">ĐỒNG HÀNH KHÁM PHÁ HUẾ</span><h2>Thuyết minh theo bước chân</h2><p>Bật vị trí để lắng nghe câu chuyện khi đến gần di tích.</p></div>
       <span class="hue-location-state ${sim?'is-demo':running?'is-real':'is-off'}">${sim?'● Đang mô phỏng':running?'● GPS đang bật':'○ GPS chưa bật'}</span></div>
     <div class="hue-location-actions">
-      ${running?'<button type="button" class="button outline" id="hue-gps-stop">Tắt định vị</button>':'<button type="button" class="button" id="enable-gps">Bật GPS & tự thuyết minh</button>'}
+      ${running?'<button type="button" class="button outline" id="hue-gps-stop">Tắt định vị</button>':'<button type="button" class="button" id="enable-gps">Bật GPS</button>'}
       <span class="hue-location-privacy">Bạn quyết định khi nào bật GPS và lưu lịch sử trên thiết bị.</span></div>
+    ${hueTtsAutoGpsHtml()}
     <div class="hue-location-message" role="status" id="hue-gps-mode-status">${esc(hueGpsTour.status)}</div>
     ${hueHistoryPanel()}
     ${hueGpsDemoAvailable ? `<div class="hue-simulation-studio">
@@ -2101,8 +2190,13 @@ function hueGpsUpdateMapLocation(point) {
   if(state.page==='map')window.HueMap?.showLocation(state.location);
 }
 
-function hueGpsListenTo(p, simulated=false) {
+function hueGpsListenTo(p, simulated=false, manual=false) {
   if (!p?.dbId) return;
+  if (!hueTtsPrefs.autoGps && !manual) {
+    hueGpsTour.status=`Đã đến ${p.name}. Bấm “Nghe ngay” để nghe thuyết minh.`;
+    hueRefreshGpsUi();
+    return;
+  }
   const locale = narrationLanguage();
   if (locale !== 'vi') {
     // No synthesized translated text: only published localization is allowed.
@@ -2141,7 +2235,7 @@ function hueGpsManualListen(slug) {
   // Manual click may override an earlier narration.
   stopAudio(false);
   hueGpsTour.autoSpeaking = true;
-  hueGpsListenTo(p, hueGpsTour.mode === 'simulation');
+  hueGpsListenTo(p, hueGpsTour.mode === 'simulation', true);
 }
 function renderNearbyGpsPanel() {
   if (nearbyGps.status === 'idle') return '';
@@ -2194,7 +2288,7 @@ async function requestNearbyGpsSuggestions(position) {
       const item=nearbyGps.items[0];
       const p=places.find(x => x.dbId===Number(item.attraction_id));
       const now=Date.now();
-      if (p && !(hueGpsTour.lastVisited===p.id && now-hueGpsTour.lastVisitAt<300000)) {
+      if (p && hueTtsPrefs.autoGps && !(hueGpsTour.lastVisited===p.id && now-hueGpsTour.lastVisitAt<300000)) {
         hueGpsTour.lastVisited=p.id; hueGpsTour.lastVisitAt=now;
         state.mapId=p.id;
         window.HueMap?.focus(p.id);
