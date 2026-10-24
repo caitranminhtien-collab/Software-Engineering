@@ -184,7 +184,7 @@ describe(
         expect(
           startAudioPlay
         ).toHaveBeenCalledWith(
-          16,
+          expect.objectContaining({ sessionId: 16, accessScope: "public", accessExpiresAt: null }),
           8
         );
 
@@ -345,7 +345,7 @@ describe(
           updateAudioPlay
         ).toHaveBeenCalledWith(
           20,
-          16,
+          expect.objectContaining({ sessionId: 16, accessScope: "public", accessExpiresAt: null }),
           75,
           false
         );

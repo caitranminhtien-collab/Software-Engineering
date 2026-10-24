@@ -220,6 +220,7 @@ describe(
               null,
             accessAttractionId:
               3,
+            accessExpiresAt: null,
           },
         });
 

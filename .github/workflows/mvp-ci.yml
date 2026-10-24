@@ -22,6 +22,6 @@ jobs:
       - name: Frontend syntax
         run: node --check frontend/app.js
       - name: MVP static integration contracts
-        run: node --test tests/M28_mvp_contract.test.cjs
+        run: node --test tests/M28_mvp_contract.node.cjs
 # CI verifies build/static contracts. Database, Redis, GPS field, and Staff flows
 # require separate staging tests and are NOT marked as passed by this workflow.

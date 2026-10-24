@@ -82,6 +82,15 @@ function createAttraction(
   };
 }
 
+// GPS service requires an authenticated, authorized visitor context.
+const publicVisitorSession = {
+  sessionId: 16,
+  accessScope: "public" as const,
+  accessRouteId: null,
+  accessAttractionId: null,
+  accessExpiresAt: null,
+};
+
 describe(
   "location-suggestion.service",
   () => {
@@ -192,7 +201,8 @@ describe(
             107.5447,
             5,
             new Date(),
-            "vi"
+            "vi",
+            publicVisitorSession
           );
 
         expect(
@@ -254,7 +264,8 @@ describe(
             107.5447,
             100,
             new Date(),
-            "vi"
+            "vi",
+            publicVisitorSession
           );
 
         expect(
@@ -305,7 +316,8 @@ describe(
                 31 *
                   1000
             ),
-            "vi"
+            "vi",
+            publicVisitorSession
           )
         ).rejects.toBeInstanceOf(
           InvalidLocationSampleError
@@ -338,7 +350,8 @@ describe(
               Date.now() +
                 1000
             ),
-            "vi"
+            "vi",
+            publicVisitorSession
           )
         ).rejects.toBeInstanceOf(
           InvalidLocationSampleError
@@ -373,7 +386,8 @@ describe(
             107.5447,
             5,
             new Date(),
-            "vi"
+            "vi",
+            publicVisitorSession
           );
 
         expect(
@@ -476,7 +490,8 @@ describe(
             107.5447,
             5,
             new Date(),
-            "vi"
+            "vi",
+            publicVisitorSession
           );
 
         expect(

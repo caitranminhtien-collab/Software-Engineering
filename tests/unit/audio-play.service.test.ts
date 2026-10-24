@@ -38,6 +38,15 @@ import {
   updateAudioPlay,
 } from "../../src/services/audio-play.service";
 
+// A real public visitor session context, not a numeric session ID.
+const publicVisitorSession = {
+  sessionId: 16,
+  accessScope: "public" as const,
+  accessRouteId: null,
+  accessAttractionId: null,
+  accessExpiresAt: null,
+};
+
 describe(
   "audio-play.service",
   () => {
@@ -93,7 +102,7 @@ describe(
 
         const result =
           await startAudioPlay(
-            16,
+            publicVisitorSession,
             8
           );
 
@@ -144,6 +153,36 @@ describe(
     );
 
     it(
+      "denies playback outside the visitor attraction grant",
+      async () => {
+        vi.mocked(
+          findPublishedAudioMediaById
+        ).mockResolvedValue({
+          media_id: "8",
+          attraction_id: "3",
+          language_code: "vi",
+          duration_seconds: 120,
+        });
+
+        await expect(
+          startAudioPlay(
+            {
+              ...publicVisitorSession,
+              accessScope: "attraction",
+              accessAttractionId: 999,
+              accessExpiresAt: new Date(Date.now() + 60000),
+            },
+            8
+          )
+        ).rejects.toThrow(
+          "Visitor session does not grant access to this resource"
+        );
+
+        expect(createAudioPlay).not.toHaveBeenCalled();
+      }
+    );
+
+    it(
       "rejects start when media is not published audio",
       async () => {
         vi.mocked(
@@ -154,7 +193,7 @@ describe(
 
         await expect(
           startAudioPlay(
-            16,
+            publicVisitorSession,
             999
           )
         ).rejects.toBeInstanceOf(
@@ -179,7 +218,7 @@ describe(
         await expect(
           updateAudioPlay(
             20,
-            99,
+            { ...publicVisitorSession, sessionId: 99 },
             10,
             false
           )
@@ -225,7 +264,7 @@ describe(
         await expect(
           updateAudioPlay(
             20,
-            16,
+            publicVisitorSession,
             -1,
             false
           )
@@ -277,7 +316,7 @@ describe(
         await expect(
           updateAudioPlay(
             20,
-            16,
+            publicVisitorSession,
             10,
             false
           )
@@ -335,7 +374,7 @@ describe(
         await expect(
           updateAudioPlay(
             20,
-            16,
+            publicVisitorSession,
             121,
             false
           )
@@ -420,7 +459,7 @@ describe(
         const result =
           await updateAudioPlay(
             20,
-            16,
+            publicVisitorSession,
             999,
             true
           );
@@ -499,7 +538,7 @@ describe(
         await expect(
           updateAudioPlay(
             20,
-            16,
+            publicVisitorSession,
             30,
             false
           )
@@ -580,7 +619,7 @@ describe(
         const result =
           await updateAudioPlay(
             20,
-            16,
+            publicVisitorSession,
             120,
             true
           );

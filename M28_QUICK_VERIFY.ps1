@@ -46,7 +46,7 @@ Write-Host '=== M2.8 MVP one-pass check (V2: coordinate-only fixture) ==='
 Check ($LASTEXITCODE -eq 0) 'Frontend JavaScript syntax'
 & npm.cmd run build
 Check ($LASTEXITCODE -eq 0) 'Backend TypeScript build'
-& node --test '.\tests\M28_mvp_contract.test.cjs'
+& node --test '.\tests\M28_mvp_contract.node.cjs'
 Check ($LASTEXITCODE -eq 0) 'Frontend GPS / backend route contract checks'
 
 $health = Invoke-RestMethod -Uri "$ApiBase/health/ready" -ErrorAction Stop
