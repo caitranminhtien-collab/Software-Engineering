@@ -69,6 +69,8 @@ const IS_ADMIN=document.body.dataset.area==='admin';
 // The ten curated slugs are a presentation whitelist, not a second database.
 // Published coordinates and names are loaded from PostgreSQL through the public API.
 const attractionApi = { status: 'loading', message: 'Đang tải dữ liệu di tích từ PostgreSQL…', staffStatus: 'loading', staffRows: [] };
+// M2.8: GPS suggestions are in-memory only. Do not persist raw coordinates or auto-play narration.
+const nearbyGps = {status:'idle', items:[], message:'', requestId:0};
 const cleanApiText = (value, limit=3000) => String(value ?? '').replace(/[<>&"']/g, '').slice(0,limit);
 const validHuePoint = (latitude, longitude) => Number.isFinite(latitude) && Number.isFinite(longitude)
   && latitude >= 16.20 && latitude <= 16.70 && longitude >= 107.30 && longitude <= 107.90;
@@ -663,6 +665,7 @@ function renderMap(){
   ${dataNotice()}
   <div class="map-layout"><aside class="glass map-sidebar"><div class="card-top"><h2>Điểm đến</h2><span class="subtle-pill">${valid?places.length+' di tích':'Dữ liệu mẫu'}</span></div>${rows}</aside>
   <div class="hue-map-column"><div id="hue-real-map" class="hue-real-map" role="region" aria-label="Bản đồ tương tác 10 di tích Huế"><div class="hue-map-loading">${valid?'Đang tải bản đồ OpenStreetMap…':'Cần kết nối backend để hiển thị tọa độ thật.'}</div></div>
+  ${renderNearbyGpsPanel()}
   <div class="hue-map-selected glass"><div><h2 id="hue-map-selected-name">${esc(current.name)}</h2><p id="hue-map-selected-type">${esc(current.type)} · Điểm tham khảo</p></div><button class="button small" data-detail="${current.id}">Chi tiết ${icon('arrow')}</button></div>
   <div class="map-switch-row"><a class="text-button" id="hue-open-osm" href="${osmHref}" target="_blank" rel="noopener noreferrer">${icon('map')} Mở vị trí trên OpenStreetMap</a><span class="gps-info">${state.location?'Có vị trí hiện tại · Không lưu lịch sử GPS':'Tọa độ chỉ mang tính tham khảo, không dùng làm chỉ dẫn cổng vào.'}</span></div>
   </div></div>`;
@@ -1888,7 +1891,99 @@ async function sendQuestion(question){
     if(version===chatResetVersion){state.chatBusy=false;if(state.page==='chat')render()}
   }
 }
-function enableGPS(){if(!navigator.geolocation){toast('Thiết bị không hỗ trợ định vị. Bạn có thể chọn di tích thủ công.');return}const button=$('#enable-gps');if(button){button.disabled=true;button.textContent='Đang xin vị trí…'}navigator.geolocation.getCurrentPosition(p=>{state.location={latitude:p.coords.latitude,longitude:p.coords.longitude};if(state.page==='map'){window.HueMap?.showLocation(state.location);render()}toast('Đã nhận vị trí. Không lưu lịch sử GPS.')},()=>{if(state.page==='map')render();toast('Chưa nhận được vị trí. Bạn vẫn có thể chọn địa điểm thủ công.')},{enableHighAccuracy:true,timeout:10000,maximumAge:30000})}
+// M2.8: Suggestions are shown only after explicit GPS permission on the map page.
+function renderNearbyGpsPanel() {
+  if (nearbyGps.status === 'idle') return '';
+  let body = '';
+  if (nearbyGps.status === 'loading') {
+    body = '<p>Đang kiểm tra các điểm gần vị trí của bạn…</p>';
+  } else if (nearbyGps.status === 'error') {
+    body = `<p role="status">${esc(nearbyGps.message)} Bạn vẫn có thể chọn di tích thủ công.</p>`;
+  } else if (!nearbyGps.items.length) {
+    body = `<p role="status">${esc(nearbyGps.message || 'Chưa có di tích gần vị trí mẫu. Bạn vẫn có thể chọn thủ công.')}</p>`;
+  } else {
+    body = nearbyGps.items.map(item => {
+      const attraction = places.find(p => Number(p.dbId) === Number(item.attraction_id));
+      if (!attraction) return '';
+      const meters = Number(item.distance_m);
+      const distance = Number.isFinite(meters) ? ` · ${Math.max(0,Math.round(meters))} m` : '';
+      return `<button class="button outline small" data-detail="${esc(attraction.id)}">${esc(attraction.name)}${distance} ${icon('arrow')}</button>`;
+    }).join('');
+  }
+  return `<section class="glass hue-gps-suggestions" aria-live="polite" style="padding:16px;margin:12px 0">
+    <div class="card-top"><h2>Gợi ý di tích gần bạn</h2>${icon('pin')}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${body}</div>
+    <small>Chỉ kiểm tra khi bạn bấm Bật định vị; không tự phát thuyết minh và không lưu lịch sử GPS.</small>
+  </section>`;
+}
+
+async function requestNearbyGpsSuggestions(position) {
+  const requestId = ++nearbyGps.requestId;
+  nearbyGps.status = 'loading';
+  nearbyGps.items = [];
+  nearbyGps.message = '';
+  if (state.page === 'map') render();
+  try {
+    const token = await audioVisitorToken();
+    // Same-origin dev server forwards /api/v1 to Backend; do not expose Staff credentials.
+    const response = await fetch('/api/v1/location-suggestions', {
+      method:'POST',
+      headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body:JSON.stringify({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy_m: position.coords.accuracy,
+        sampled_at: new Date(position.timestamp).toISOString()
+      })
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    if (!Array.isArray(payload?.data)) throw new Error('Dữ liệu gợi ý không hợp lệ');
+    if (requestId !== nearbyGps.requestId) return;
+    nearbyGps.status = 'ready';
+    nearbyGps.items = payload.data.filter(item => places.some(p => Number(p.dbId) === Number(item.attraction_id)));
+    nearbyGps.message = payload?.meta?.manual_selection_recommended
+      ? 'Độ chính xác GPS chưa đủ. Hãy chọn di tích thủ công.'
+      : 'Không có gợi ý mới trong bán kính hoặc điểm vừa được gợi ý gần đây.';
+  } catch (error) {
+    if (requestId !== nearbyGps.requestId) return;
+    nearbyGps.status = 'error';
+    nearbyGps.items = [];
+    nearbyGps.message = 'Không tải được gợi ý GPS từ Backend.';
+    console.warn('[GPS Suggestions]', error);
+  } finally {
+    if (requestId === nearbyGps.requestId && state.page === 'map') render();
+  }
+}
+
+function enableGPS() {
+  if (!navigator.geolocation) {
+    toast('Thiết bị không hỗ trợ định vị. Bạn có thể chọn di tích thủ công.');
+    return;
+  }
+  const button = $('#enable-gps');
+  if (button) { button.disabled = true; button.textContent = 'Đang xin vị trí…'; }
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      state.location = {latitude:position.coords.latitude, longitude:position.coords.longitude};
+      if (state.page === 'map') {
+        window.HueMap?.showLocation(state.location);
+        render();
+      }
+      toast('Đã nhận vị trí. Chỉ kiểm tra di tích gần khi bạn yêu cầu.');
+      void requestNearbyGpsSuggestions(position);
+    },
+    () => {
+      nearbyGps.requestId++;
+      nearbyGps.status = 'error';
+      nearbyGps.items = [];
+      nearbyGps.message = 'Chưa nhận được vị trí từ thiết bị.';
+      if (state.page === 'map') render();
+      toast('Chưa nhận được vị trí. Bạn vẫn có thể chọn di tích thủ công.');
+    },
+    {enableHighAccuracy:true, timeout:10000, maximumAge:10000}
+  );
+}
 document.addEventListener('click',e=>{const b=e.target.closest('button,a');if(!b){if(e.target===$('#modal'))closeModal();return}if(!IS_ADMIN && b.dataset.hueGalleryIndex !== undefined){selectHeritagePhoto(Number(b.dataset.hueGalleryIndex));return}else if(!IS_ADMIN && b.dataset.hueGalleryMove !== undefined){selectHeritagePhoto(heritageGalleryState.index+Number(b.dataset.hueGalleryMove));return}else if(!IS_ADMIN && b.hasAttribute('data-hue-real-stop')){const audio=document.querySelector('.audio-feature audio[data-hue-real-audio]');if(audio){audio.pause();audio.currentTime=0;}return}else if(!IS_ADMIN && b.dataset.hueDetailAudio !== undefined){const id=b.dataset.hueDetailAudio;if(state.trackId!==id){stopAudio(false);state.trackId=id;}playAudio();return}else if(!IS_ADMIN && b.hasAttribute('data-hue-detail-stop')){stopAudio(false);updateDock();return}else if(!IS_ADMIN && b.id==='retry-public-routes'){publicRouteApi.status='loading';render();loadPublishedRoutesFromBackend()}else if(!IS_ADMIN&&b.dataset.publicRouteSelect){selectPublishedRoute(b.dataset.publicRouteSelect)}else if(!IS_ADMIN&&b.dataset.publicRouteRetry){selectPublishedRoute(b.dataset.publicRouteRetry)}else if(!IS_ADMIN&&b.dataset.publicStopFocus!==undefined){huePublicRouteMap.focus(Number(b.dataset.publicStopFocus))}else if(!IS_ADMIN&&b.id==='public-route-fit-all'){huePublicRouteMap.fitAll()}else if(!IS_ADMIN&&b.id==='public-route-focus-current'){huePublicRouteMap.focus(Number(state.activeRoute?.step)||0)}else if(!IS_ADMIN&&b.id==='public-route-locate-me'){locatePublicRouteUser()}else if(!IS_ADMIN&&b.id==='start-public-route'){const route=publicRouteApi.detail;if(route?.stops?.length){state.activeRoute={id:Number(route.id),step:0};write('hue-active-route',state.activeRoute);trackEvent('route',String(route.id));const analyticsRouteId = Number(route.id);
 
 if (
