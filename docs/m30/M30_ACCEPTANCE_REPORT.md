@@ -1,6 +1,6 @@
 # M3.0 — Biên bản trạng thái MVP Hue Tourism Guide (bản dự thảo)
 
-**Ngày lập:** 24/10/2026  
+**Ngày lập:** 24/10/2026
 **Nguồn đối chiếu:** PRD tiếng Việt (10/2026); ảnh commit/check GitHub; kết quả PowerShell M2.7–M2.9 mà nhóm đã xác nhận.
 
 ## 1. Baseline & CI
@@ -18,8 +18,8 @@
 
 ## 3. Phạm vi phát hành được đề xuất
 
-**Ứng viên demo local / báo cáo đồ án:** Có thể tiến hành kiểm thử trình duyệt theo runbook M3.0 và chốt bản demo sau khi checklist B01–B13 được xác nhận.  
-**MVP nghiệm thu nghiệp vụ:** **Chưa được phê duyệt** — cần số liệu thực địa, review dữ liệu, chatbot và các điều kiện C01–C09.  
+**Ứng viên demo local / báo cáo đồ án:** Có thể tiến hành kiểm thử trình duyệt theo runbook M3.0 và chốt bản demo sau khi checklist B01–B13 được xác nhận.
+**MVP nghiệm thu nghiệp vụ:** **Chưa được phê duyệt** — cần số liệu thực địa, review dữ liệu, chatbot và các điều kiện C01–C09.
 **Production:** **Chưa được phê duyệt** — chưa có bằng chứng staging, backup/restore, giám sát, hiệu năng và retention.
 
 ## 4. Quyết định cần ghi nhận
