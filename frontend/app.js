@@ -1,3 +1,4 @@
+// M3.9 Visitor Clean UI - presentation only. No Admin, auth, database or GPS behavior edits.
 const icons={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',compass:'<circle cx="12" cy="12" r="9"/><path d="m16 8-3 5-5 3 3-5Z"/>',map:'<path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2ZM9 3v16m6-14v16"/>',route:'<circle cx="6" cy="5" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 5h7a4 4 0 0 1 0 8H9a3 3 0 0 0 0 6h7"/>',headphones:'<path d="M4 14v-3a8 8 0 0 1 16 0v3M4 13H2v7h4v-7Zm16 0h2v7h-4v-7Z"/>',chat:'<path d="M21 12a8 8 0 0 1-8 8H5l-3 2 1-6a9 9 0 1 1 18-4Z"/><path d="M7 10h10M7 14h6"/>',heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',settings:'<path d="m9 3-1 3-3 1 1 3-2 2 2 2-1 3 3 1 1 3h6l1-3 3-1-1-3 2-2-2-2 1-3-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/>',arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',chevron:'<path d="m9 5 7 7-7 7"/>',search:'<circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/>',pin:'<path d="M19 10c0 5-7 12-7 12S5 15 5 10a7 7 0 0 1 14 0Z"/><circle cx="12" cy="10" r="2"/>',play:'<path fill="currentColor" stroke="none" d="m8 4 12 8-12 8Z"/>',pause:'<path d="M8 5v14m8-14v14" stroke-width="4"/>',stop:'<rect x="6" y="6" width="12" height="12" fill="currentColor" stroke="none"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>',check:'<path d="m5 12 4 4L20 5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18"/>',book:'<path d="M12 5C8 2 4 3 2 4v16c3-2 7-2 10 0 3-2 7-2 10 0V4c-3-1-7-2-10 1Zm0 0v15"/>',staff:'<circle cx="9" cy="8" r="4"/><path d="M2 22v-3a7 7 0 0 1 14 0v3m2-16a4 4 0 0 1 0 8m0 3a6 6 0 0 1 4 5"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',send:'<path d="m22 2-7 20-4-9-9-4Zm0 0L11 13"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',building:'<path d="m2 9 10-7 10 7H2Zm2 0v11m5-11v11m6-11v11m5-11v11M2 22h20"/>',external:'<path d="M14 3h7v7m0-7-11 11M10 3H3v18h18v-7"/>',trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>'};
 const icon=n=>`<svg viewBox="0 0 24 24" aria-hidden="true">${icons[n]||icons.compass}</svg>`;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -18,7 +19,7 @@ const places=[
 ];
 places.forEach(p=>{p.text=p.text||`${p.name} là một địa điểm trong phạm vi thử nghiệm của Hue Guide. Bạn có thể xem thông tin, khám phá điểm đến và nghe bản đọc nội dung. Đây là bản thuyết minh mẫu để trải nghiệm giao diện. Nguồn lịch sử, tọa độ, lối vào và giờ mở cửa cần được xác minh trước khi sử dụng thực tế.`;p.en=p.en||`You are exploring ${p.name}, a destination in the Hue Guide prototype. This is sample narration for testing the interface. Historical content and visitor information require verification before publication.`});
 const routes=[{id:'royal',name:'Dấu ấn cung đình',subtitle:'Bắt đầu từ những không gian quen thuộc của Cố đô.',stops:['dai-noi','an-dinh','nam-giao']},{id:'tombs',name:'Hành trình lăng tẩm',subtitle:'Một lựa chọn dành cho người yêu kiến trúc di sản.',stops:['tu-duc','dong-khanh','khai-dinh']},{id:'heritage',name:'Theo dấu di sản',subtitle:'Tự chọn nhịp điệu, nối tiếp những điểm dừng.',stops:['dai-noi','minh-mang','gia-long']}];
-const navItems=[['home','home','Tổng quan'],['explore','compass','Khám phá di tích'],['map','map','Bản đồ'],['routes','route','Tuyến tham quan'],['audio','headphones','Thuyết minh'],['chat','chat','Hỏi đáp di sản'],['popular','trend','Tham quan nhiều nhất'],['weather','sun','Thời tiết Huế']];
+const navItems=[['home','home','Tổng quan'],['explore','compass','Khám phá di tích'],['map','map','Bản đồ'],['routes','route','Tuyến tham quan'],['audio','headphones','Thuyết minh'],['chat','chat','Hỏi đáp di sản'],['popular','trend','Điểm đến nổi bật'],['weather','sun','Thời tiết Huế']];
 const state={page:'home',query:'',filter:'Tất cả',recent:read('hue-recent',[]),viewed:read('hue-viewed',read('hue-recent',[])),routeId:'royal',activeRoute:read('hue-active-route',null),mapId:'dai-noi',realMap:false,location:null,trackId:'dai-noi',audioLanguage:read('hue-audio-language','vi-VN'),playing:false,paused:false,progress:0,elapsed:0,utterance:null,chat:[],chatBusy:false,drafts:read('hue-content-drafts',{}),promoIndex:0,promoPaused:false,adminFilter:'Tất cả',adminTab:'dashboard',adminMode:'server',adminPeriod:7,adminSearch:'',staffRouteFilter:'all',tasks:read('hue-admin-tasks',[])};
 // Localized speech uses only published localization text from the Public API.
 const narrationLocales = [
@@ -68,8 +69,8 @@ const $=q=>document.querySelector(q);
 const IS_ADMIN=document.body.dataset.area==='admin';
 // The ten curated slugs are a presentation whitelist, not a second database.
 // Published coordinates and names are loaded from PostgreSQL through the public API.
-const attractionApi = { status: 'loading', message: 'Đang tải dữ liệu di tích từ PostgreSQL…', staffStatus: 'loading', staffRows: [] };
-// M2.8: GPS suggestions are in-memory only. Do not persist raw coordinates or auto-play narration.
+const attractionApi = { status: 'loading', message: 'Đang tải các điểm tham quan…', staffStatus: 'loading', staffRows: [] };
+// GPS coordinates stay in memory; geolocation is opt-in. Local-only simulation never calls GPS Backend.
 const nearbyGps = {status:'idle', items:[], message:'', requestId:0};
 const cleanApiText = (value, limit=3000) => String(value ?? '').replace(/[<>&"']/g, '').slice(0,limit);
 const validHuePoint = (latitude, longitude) => Number.isFinite(latitude) && Number.isFinite(longitude)
@@ -138,7 +139,7 @@ function realAudioControl(media, label) {
       controls preload="metadata" src="${esc(media.url)}" style="display:block;width:100%;margin:12px 0">
       Trình duyệt không hỗ trợ phát tệp âm thanh.
     </audio>
-    <small>MP3/WAV đã xuất bản · Ngôn ngữ: ${media.language === 'en' ? 'English' : 'Tiếng Việt'} · Nguồn: ${esc(media.credit || '—')}</small>
+    <small>${media.language === 'en' ? 'Tiếng Anh' : 'Tiếng Việt'}${media.credit ? ' · Nguồn: '+esc(media.credit) : ''}</small>
   </div>`;
 }
 
@@ -169,8 +170,7 @@ function heritageGalleryFrame(photo, p, index) {
 function heritageGalleryContent(p) {
   const photos = heritagePhotos(p);
   if (!photos.length) return `<div class="hue-gallery-empty" role="status">
-    ${icon('building')}<strong>Chưa có ảnh công khai</strong>
-    <span>Ảnh sẽ xuất hiện khi được tải lên và xuất bản bởi quản trị viên.</span>
+    ${icon('building')}<strong>Chưa có ảnh</strong>
   </div>`;
   const first = photos[0];
   return `<section class="hue-gallery" aria-label="Thư viện ảnh ${esc(p.name)}">
@@ -191,7 +191,7 @@ function heritageGalleryContent(p) {
     </div>` : ''}
     <div class="hue-gallery-caption" aria-live="polite">
       <span id="hue-gallery-description">${esc(first.caption || `Ảnh di tích ${p.name}`)}</span>
-      <small id="hue-gallery-credit">Nguồn: ${esc(first.credit || 'Chưa ghi nguồn')} · ${esc(first.rights_reference || 'Chưa ghi thông tin quyền')}</small>
+      <small id="hue-gallery-credit">${[first.credit&&'Nguồn: '+first.credit,first.rights_reference].filter(Boolean).map(esc).join(' · ')}</small>
     </div>
   </section>`;
 }
@@ -216,7 +216,7 @@ function selectHeritagePhoto(nextIndex) {
   const description = document.getElementById('hue-gallery-description');
   if (description) description.textContent = photo.caption || `Ảnh di tích ${p.name}`;
   const credit = document.getElementById('hue-gallery-credit');
-  if (credit) credit.textContent = `Nguồn: ${photo.credit || 'Chưa ghi nguồn'} · ${photo.rights_reference || 'Chưa ghi thông tin quyền'}`;
+  if (credit) credit.textContent = [photo.credit&&'Nguồn: '+photo.credit,photo.rights_reference].filter(Boolean).join(' · ');
   document.querySelectorAll('#modal [data-hue-gallery-index]').forEach(button => {
     const selected = Number(button.dataset.hueGalleryIndex) === idx;
     button.classList.toggle('active', selected);
@@ -322,10 +322,8 @@ function apiItems(payload) {
   return items;
 }
 function dataNotice() {
-  const message = attractionApi.status === 'ready'
-    ? `Đã đồng bộ ${places.length} di tích từ PostgreSQL · Tọa độ điểm tham khảo, chưa phải cổng vào hoặc vùng GPS xác minh.`
-    : attractionApi.message;
-  return `<p class="hue-data-notice" role="status">${esc(message)}</p>`;
+  if (attractionApi.status === 'ready') return '';
+  return `<p class="hue-data-notice" role="status">${esc(attractionApi.message)}</p>`;
 }
 async function fetchJson(path) {
   const response = await fetch(path, { credentials: 'same-origin', headers: { Accept: 'application/json' }, cache: 'no-store' });
@@ -376,7 +374,7 @@ async function loadPublishedRoutesFromBackend() {
     }
   } catch (error) {
     publicRouteApi.status = 'error';
-    publicRouteApi.message = 'Không thể tải tuyến tham quan từ Backend.';
+    publicRouteApi.message = 'Chưa tải được tuyến tham quan. Vui lòng thử lại.';
     console.error('[Routes API]', error);
   } finally {
     if (!IS_ADMIN && ['routes', 'home'].includes(state.page)) render();
@@ -452,7 +450,6 @@ async function loadAttractionsFromBackend() {
       }
     }
 
-    const existing = new Map(places.map(p => [p.id, p]));
     const next = [];
     const seen = new Set();
 
@@ -473,7 +470,6 @@ async function loadAttractionsFromBackend() {
         throw new Error(`Tọa độ không hợp lệ: ${slug}`);
       }
 
-      const local = existing.get(slug);
       let detail = null;
 
       // Always fetch the public detail for every attraction: list responses
@@ -488,7 +484,7 @@ async function loadAttractionsFromBackend() {
       }
 
       const name = cleanApiText(
-        item.name || detail?.name || local?.name || slug,
+        item.name || detail?.name || slug,
         255
       );
 
@@ -498,19 +494,15 @@ async function loadAttractionsFromBackend() {
       );
 
       next.push({
-        ...local,
         id: slug,
         dbId,
         name,
-        type: local?.type || 'Di tích',
-        intro: description || local?.intro ||
-          'Thông tin di tích đang được cập nhật.',
-        text: description || local?.text ||
-          'Chưa có nội dung thuyết minh.',
+        type: cleanApiText(item.category || detail?.category || 'Di tích', 80),
+        intro: description || 'Nội dung giới thiệu đang được cập nhật.',
+        text: description || 'Chưa có nội dung thuyết minh công khai.',
         localizedNarrations: {vi: {name, description: description || 'Chưa có nội dung thuyết minh.'}},
         narrationRequests: {},
-        en: local?.en ||
-          'Explore this attraction in Hue with Hue Guide.',
+        en: 'Explore a published Hue heritage attraction.',
         // Only backend-published images returned by the visitor API.
         publishedImages: publishedImageMedia(detail?.media),
         publishedAudios: publishedAudioMedia(detail?.media),
@@ -531,17 +523,11 @@ async function loadAttractionsFromBackend() {
       throw new Error('API chưa trả về di tích đã xuất bản');
     }
 
-    // Giu thu tu 10 di tich cu, them di tich moi phia sau
-    const rank = new Map(
-      [...existing.keys()].map((slug, i) => [slug, i])
-    );
-
-    next.sort((a, b) =>
-      (rank.get(a.id) ?? 999999) -
-      (rank.get(b.id) ?? 999999)
-    );
+    // M3.7 Visitor Real Data: deterministic order from actual published records.
+    next.sort((a,b) => a.name.localeCompare(b.name, 'vi'));
 
     places.splice(0, places.length, ...next);
+    if (!places.some(p => p.id === state.trackId)) state.trackId=places[0].id;
     if (narrationLanguage() !== 'vi') {
       const selected = places.find(p => p.id === state.trackId);
       if (selected) ensureNarration(selected);
@@ -560,8 +546,7 @@ async function loadAttractionsFromBackend() {
   } catch (error) {
     attractionApi.status = 'error';
     attractionApi.message =
-      `Chưa đồng bộ được PostgreSQL (${cleanApiText(error.message, 180)}). ` +
-      'Đang hiển thị dữ liệu giao diện mẫu; vị trí GPS không khả dụng.';
+      'Không thể tải danh sách di tích. Vui lòng thử lại.';
 
     if (state.page !== 'chat' && !state.playing) {
       render();
@@ -594,8 +579,8 @@ function wave(){return `<div class="waveform" aria-hidden="true">${Array.from({l
 function thumb(p,i=0) {
   const published = mediaImage(p);
   if (published) return published;
-  return `<div class="hue-explorer-placeholder" role="img" aria-label="${esc(p.name)} chưa có ảnh công khai">
-    ${icon('building')}<span>Chưa có ảnh công khai</span>
+  return `<div class="hue-explorer-placeholder" role="img" aria-label="${esc(p.name)} chưa có ảnh">
+    ${icon('building')}<span>Chưa có ảnh</span>
   </div>`;
 }
 function card(p,i) {
@@ -603,7 +588,7 @@ function card(p,i) {
   return `<article class="hue-explorer-card">
     <div class="hue-explorer-cover">
       ${thumb(p,i)}
-      ${photoCount?`<span class="hue-photo-count">${photoCount} ảnh đã xuất bản</span>`:''}
+      
     </div>
     <div class="hue-explorer-copy">
       <span class="hue-explorer-type">${esc(p.type.toUpperCase())} · HUẾ</span>
@@ -636,38 +621,65 @@ function finishOpening(){if(!openingActive||openingClosing)return;openingClosing
 function initOpening(){const route=location.hash.replace('#','');if(route&&route!=='home')return;if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;try{if(sessionStorage.getItem('hue-opening-seen-v1'))return;sessionStorage.setItem('hue-opening-seen-v1','1')}catch{}const overlay=$('#opening-screen'),img=$('#opening-image'),button=$('#skip-opening');if(!overlay||!img||!button)return;openingActive=true;overlay.hidden=false;document.body.classList.add('opening-visible');const shell=$('.app-shell');if(shell)shell.inert=true;button.addEventListener('click',finishOpening);button.focus({preventScroll:true});overlay.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();finishOpening()}if(e.key==='Tab'){e.preventDefault();button.focus()}});let started=false;const start=()=>{if(started||openingClosing||!openingActive)return;started=true;overlay.classList.add('ready');openingTimer=setTimeout(finishOpening,3200)};img.addEventListener('load',start,{once:true});img.addEventListener('error',finishOpening,{once:true});if(img.complete){if(img.naturalWidth>0)start();else finishOpening()}openingFallback=setTimeout(finishOpening,6500)}
 const promoSlides=[
 {tag:'KHÁM PHÁ CỐ ĐÔ',title:'Chạm vào di sản.<br>Cảm nhận Huế.',text:'Bắt đầu hành trình tại những không gian cung đình.',button:'Khám phá di tích',page:'explore',position:'78% 60%',theme:'heritage'},
-{tag:'HUẾ QUA TỪNG CÂU CHUYỆN',title:'Lắng nghe Huế.<br>Theo cách của bạn.',text:'Trải nghiệm bản thuyết minh mẫu bằng tiếng Việt và tiếng Anh.',button:'Nghe thuyết minh',page:'audio',position:'42% 65%',theme:'stories'},
+{tag:'HUẾ QUA TỪNG CÂU CHUYỆN',title:'Lắng nghe Huế.<br>Theo cách của bạn.',text:'Lắng nghe câu chuyện di sản qua những ngôn ngữ khác nhau.',button:'Nghe thuyết minh',page:'audio',position:'42% 65%',theme:'stories'},
 {tag:'HÀNH TRÌNH DI SẢN',title:'Một tuyến đường.<br>Nhiều dấu ấn.',text:'Kết nối những điểm dừng trong hành trình khám phá Cố đô.',button:'Chọn tuyến tham quan',page:'routes',position:'95% 70%',theme:'journey'}];
 let promoTimer=null;
-function renderPromo(){return `<article class="glass promo-carousel" id="promo-carousel" role="region" aria-roledescription="trình chiếu" aria-label="Quảng bá khám phá Huế"><span class="promo-badge">GÓC QUẢNG BÁ</span><button class="promo-pause" id="promo-pause" aria-label="${state.promoPaused?'Tiếp tục tự chuyển slide':'Tạm dừng tự chuyển slide'}" aria-pressed="${state.promoPaused}">${icon(state.promoPaused?'play':'pause')}</button><div class="promo-slides">${promoSlides.map((slide,i)=>`<section class="promo-slide ${slide.theme}" id="promo-slide-${i}" role="group" aria-roledescription="slide" aria-label="${i+1} / ${promoSlides.length}" ${i===state.promoIndex?'':'hidden'}><img src="assets/heritage.png" alt="" style="object-position:${slide.position}" ${i?'loading="lazy"':''}><div class="promo-copy"><span class="eyebrow">${slide.tag}</span><h2>${slide.title}</h2><p>${slide.text}</p><button class="button light small" data-page="${slide.page}">${slide.button} ${icon('arrow')}</button></div></section>`).join('')}</div><div class="promo-controls"><button class="promo-arrow" data-promo-step="-1" aria-label="Slide trước">${icon('chevron')}</button><div class="promo-dots" aria-label="Chọn slide">${promoSlides.map((slide,i)=>`<button id="promo-dot-${i}" data-promo-dot="${i}" aria-label="Xem slide ${i+1}" aria-pressed="${i===state.promoIndex}"></button>`).join('')}</div><span id="promo-counter">${String(state.promoIndex+1).padStart(2,'0')} / 03</span><button class="promo-arrow" data-promo-step="1" aria-label="Slide tiếp theo">${icon('chevron')}</button></div><span class="promo-art-note">Hình minh họa</span></article>`}
-function setPromo(index){state.promoIndex=(index+promoSlides.length)%promoSlides.length;if(state.page!=='home')return;promoSlides.forEach((_,i)=>{const slide=$('#promo-slide-'+i),dot=$('#promo-dot-'+i);if(slide)slide.hidden=i!==state.promoIndex;if(dot)dot.setAttribute('aria-pressed',String(i===state.promoIndex))});const counter=$('#promo-counter');if(counter)counter.textContent=String(state.promoIndex+1).padStart(2,'0')+' / 03'}
-function syncPromoTimer(){clearInterval(promoTimer);promoTimer=null;if(openingActive||state.page!=='home'||state.promoPaused||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;promoTimer=setInterval(()=>{const area=$('#promo-carousel');if(state.page!=='home'||document.hidden||!area||(area.contains(document.activeElement)&&document.activeElement?.matches?.(':focus-visible')))return;setPromo(state.promoIndex+1)},4000)}
-function togglePromo(){state.promoPaused=!state.promoPaused;const b=$('#promo-pause');if(b){b.innerHTML=icon(state.promoPaused?'play':'pause');b.setAttribute('aria-pressed',String(state.promoPaused));b.setAttribute('aria-label',state.promoPaused?'Tiếp tục tự chuyển slide':'Tạm dừng tự chuyển slide')}syncPromoTimer()}
-function renderHome(){const date=new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Asia/Ho_Chi_Minh'}).format(new Date());const active=state.activeRoute&&routes.find(r=>r.id===state.activeRoute.id);return `${header('Tổng quan','Một góc nhìn, trọn hành trình khám phá Huế.','HUE GUIDE · KHÔNG GIAN CỦA BẠN',`<div class="date-pill">${icon('calendar')} ${date}</div>`)}<div class="dashboard-grid">${renderPromo()}<article class="glass dash-categories"><div class="card-top"><h2>Khám phá theo loại di tích</h2>${icon('compass')}</div><p class="category-intro">Bạn muốn khám phá điều gì?</p><div class="category-choices">${[['Cung điện','building','Kiến trúc cung đình'],['Lăng tẩm','building','Dấu ấn các triều vua'],['Di tích','pin','Không gian văn hóa']].map(([type,ic,desc])=>`<button class="category-choice" data-explore-type="${type}"><span class="category-icon">${icon(ic)}</span><span><strong>${type}</strong><small>${desc}</small></span><span class="category-count">${places.filter(p=>p.type===type).length}</span>${icon('chevron')}</button>`).join('')}</div><button class="text-button" data-page="explore">Xem tất cả ${places.length} điểm đến ${icon('arrow')}</button></article><article class="glass dash-popular"><div class="card-top"><h2>Được tham quan nhiều nhất</h2>${icon('trend')}</div><p class="sample-label">XẾP HẠNG MINH HỌA</p><div class="popular-preview">${popularPlaces().slice(0,3).map((p,i)=>`<button class="popular-preview-row" data-detail="${p.id}"><span>0${i+1}</span><strong>${p.name}</strong>${icon('chevron')}</button>`).join('')}</div><button class="text-button" data-page="popular">Xem bảng xếp hạng ${icon('arrow')}</button></article><article class="glass weather-now" id="weather-compact">${weatherCompact()}</article><article class="glass weather-panel" id="weather-widget" aria-live="polite">${weatherWidget()}</article>${renderHomeRoutePreview()}<article class="glass dash-listen"><div><span class="eyebrow">GÓC LẮNG NGHE</span><h2>${byId(state.trackId).name}</h2><p>Nghe bản thuyết minh mẫu theo nhịp của bạn.</p></div><button class="icon-button dark" data-play aria-label="Phát hoặc tạm dừng thuyết minh">${icon(state.playing&&!state.paused?'pause':'play')}</button></article><article class="glass dash-shortcuts"><h2>Mọi thứ cho chuyến đi</h2><div><button class="outline-row" data-page="map">${icon('map')}<span>Bản đồ di sản</span>${icon('arrow')}</button><button class="outline-row" data-page="chat">${icon('chat')}<span>Hỏi đáp di sản</span>${icon('arrow')}</button></div></article></div>`}
+// M3.7 Home Hero: public names, images and descriptions only.
+function renderPromo(){
+ const p=places.find(p=>p.dbId&&p.publishedImages?.length)||places.find(p=>p.dbId);
+ if(!p)return '';
+ return `<article class="glass promo-carousel hue-real-hero" id="promo-carousel" aria-label="Di tích Huế">
+  <div class="promo-slide heritage">
+  ${p.publishedImages?.[0]?.url?`<img class="hue-published-photo" src="${esc(p.publishedImages[0].url)}" alt="${esc(p.name)}">`:'<div class="hue-promo-no-photo" role="img" aria-label="Di tích chưa có ảnh"></div>'}
+  <div class="promo-copy"><span class="eyebrow">KHÁM PHÁ DI TÍCH HUẾ</span><h2>${esc(p.name)}</h2><p>${esc(p.intro)}</p>
+  <button type="button" class="button light small" data-detail="${esc(p.id)}">Khám phá di tích ${icon('arrow')}</button></div></div></article>`;
+}
 
-const popularSamples=[['dai-noi',12840],['khai-dinh',10360],['tu-duc',9180],['minh-mang',8640],['an-dinh',7250],['gia-long',4860],['dong-khanh',3940],['nam-giao',3260],['thieu-tri',2480],['duc-duc',1950]];
+function setPromo(index){state.promoIndex=(index+promoSlides.length)%promoSlides.length;if(state.page!=='home')return;promoSlides.forEach((_,i)=>{const slide=$('#promo-slide-'+i),dot=$('#promo-dot-'+i);if(slide)slide.hidden=i!==state.promoIndex;if(dot)dot.setAttribute('aria-pressed',String(i===state.promoIndex))});const counter=$('#promo-counter');if(counter)counter.textContent=String(state.promoIndex+1).padStart(2,'0')+' / 03'}
+function syncPromoTimer(){clearInterval(promoTimer);promoTimer=null;if(openingActive||state.page!=='home'||state.promoPaused||!$('#promo-dot-0')||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;promoTimer=setInterval(()=>{const area=$('#promo-carousel');if(state.page!=='home'||document.hidden||!area||(area.contains(document.activeElement)&&document.activeElement?.matches?.(':focus-visible')))return;setPromo(state.promoIndex+1)},4000)}
+function togglePromo(){state.promoPaused=!state.promoPaused;const b=$('#promo-pause');if(b){b.innerHTML=icon(state.promoPaused?'play':'pause');b.setAttribute('aria-pressed',String(state.promoPaused));b.setAttribute('aria-label',state.promoPaused?'Tiếp tục tự chuyển slide':'Tạm dừng tự chuyển slide')}syncPromoTimer()}
+function renderHome(){const date=new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Asia/Ho_Chi_Minh'}).format(new Date());const active=state.activeRoute&&routes.find(r=>r.id===state.activeRoute.id);return `${header('Tổng quan','Một góc nhìn, trọn hành trình khám phá Huế.','HUE GUIDE · KHÔNG GIAN CỦA BẠN',`<div class="date-pill">${icon('calendar')} ${date}</div>`)}<div class="dashboard-grid">${renderPromo()}<article class="glass dash-categories"><div class="card-top"><h2>Khám phá theo loại di tích</h2>${icon('compass')}</div><p class="category-intro">Bạn muốn khám phá điều gì?</p><div class="category-choices">${[...new Set(places.map(p=>p.type))].map(type=>[type,'pin','Di tích đã xuất bản']).map(([type,ic,desc])=>`<button class="category-choice" data-explore-type="${type}"><span class="category-icon">${icon(ic)}</span><span><strong>${type}</strong><small>${desc}</small></span><span class="category-count">${places.filter(p=>p.type===type).length}</span>${icon('chevron')}</button>`).join('')}</div><button class="text-button" data-page="explore">Xem tất cả ${places.length} điểm đến ${icon('arrow')}</button></article><article class="glass dash-popular"><div class="card-top"><h2>Điểm đến nổi bật</h2>${icon('trend')}</div><p class="sample-label">DI TÍCH ĐÃ XUẤT BẢN</p><div class="popular-preview">${popularPlaces().slice(0,3).map((p,i)=>`<button class="popular-preview-row" data-detail="${p.id}"><span>${icon('pin')}</span><strong>${p.name}</strong>${icon('chevron')}</button>`).join('')}</div><button class="text-button" data-page="popular">Xem các điểm đến ${icon('arrow')}</button></article><article class="glass weather-now" id="weather-compact">${weatherCompact()}</article><article class="glass weather-panel" id="weather-widget" aria-live="polite">${weatherWidget()}</article>${renderHomeRoutePreview()}<article class="glass dash-listen"><div><span class="eyebrow">GÓC LẮNG NGHE</span><h2>${byId(state.trackId).name}</h2><p>Nghe nội dung thuyết minh đã xuất bản.</p></div><button class="icon-button dark" data-play aria-label="Phát hoặc tạm dừng thuyết minh">${icon(state.playing&&!state.paused?'pause':'play')}</button></article><article class="glass dash-shortcuts"><h2>Mọi thứ cho chuyến đi</h2><div><button class="outline-row" data-page="map">${icon('map')}<span>Bản đồ di sản</span>${icon('arrow')}</button><button class="outline-row" data-page="chat">${icon('chat')}<span>Hỏi đáp di sản</span>${icon('arrow')}</button></div></article></div>`}
+
+// M3.7 Visitor Real Data — no invented visit counts.
 icons.trend='<path d="m3 17 6-6 4 4 8-10M15 5h6v6"/>';
-function popularPlaces(){return popularSamples.map(([id,visits],i)=>({...byId(id),visits,rank:i+1})).filter(p=>(state.filter==='Tất cả'||p.type===state.filter)&&norm(p.name+' '+p.intro).includes(norm(state.query)))}
-function popularCard(p,i){return `<article class="attraction-card popular-card"><div class="attraction-image">${thumb(p,i)}<span class="popular-rank ${p.rank<=3?'top-rank':''}">#${String(p.rank).padStart(2,'0')}</span></div><div class="attraction-copy"><small>${p.type.toUpperCase()} · HUẾ</small><h2>${p.name}</h2><div class="popular-visits">${icon('staff')}<strong>${p.visits.toLocaleString('vi-VN')}</strong><span>lượt tham quan mẫu</span></div><div class="popularity-meter" aria-hidden="true"><i style="width:${p.visits/popularSamples[0][1]*100}%"></i></div><p>${esc(p.intro)}</p><div class="card-actions"><button class="button small" data-detail="${p.id}">Khám phá ${icon('arrow')}</button><button class="text-button" data-audio="${p.id}">${icon('headphones')} Nghe</button></div></div></article>`}
-function popularResults(){const list=popularPlaces();return list.length?`<div class="attraction-grid">${list.map(popularCard).join('')}</div>`:'<div class="empty"><h2>Chưa tìm thấy di tích phù hợp</h2><p>Thử từ khóa khác hoặc chọn tất cả loại di tích.</p></div>'}
-function renderPopular(){return `${header('Được tham quan nhiều nhất.','Khám phá những điểm đến nổi bật qua bảng xếp hạng tham quan.','HUE GUIDE · ĐIỂM ĐẾN NỔI BẬT',`<span class="subtle-pill">${icon('trend')} Xếp theo lượt tham quan</span>`)}<div class="popular-notice"><span class="sample-label">DỮ LIỆU MINH HỌA</span><p>Thứ hạng và số lượt bên dưới là số liệu mẫu phục vụ trình diễn giao diện. Chưa có dữ liệu lượt tham quan thực tế hoặc thống kê toàn hệ thống.</p></div><div class="filters">${['Tất cả','Cung điện','Lăng tẩm','Di tích'].map(v=>`<button class="filter ${state.filter===v?'active':''}" data-filter="${v}">${v}</button>`).join('')}<input class="local-search" id="local-search" value="${esc(state.query)}" placeholder="Tìm tên di tích…" aria-label="Lọc điểm tham quan"></div><div class="popular-list-header"><span id="popular-count">${popularPlaces().length} điểm đến</span><span>Lượt tham quan giảm dần · Số liệu mẫu</span></div><div id="attraction-results">${popularResults()}</div>`}
+function popularPlaces(){return places.filter(p=>p.dbId && (state.filter==='Tất cả'||p.type===state.filter)&&norm(p.name+' '+p.intro).includes(norm(state.query)));}
+function popularCard(p,i){return `<article class="attraction-card popular-card"><div class="attraction-image">${thumb(p,i)}</div>
+  <div class="attraction-copy"><small>DI TÍCH ĐÃ XUẤT BẢN · HUẾ</small><h2>${esc(p.name)}</h2><p>${esc(p.intro)}</p>
+  <div class="card-actions"><button class="button small" data-detail="${esc(p.id)}">Khám phá ${icon('arrow')}</button>
+  <button class="text-button" data-show-map="${esc(p.id)}">${icon('map')} Bản đồ</button></div></div></article>`;}
+function popularResults(){const list=popularPlaces();return list.length?`<div class="attraction-grid">${list.map(popularCard).join('')}</div>`:'<div class="empty"><h2>Không có điểm phù hợp</h2><p>Vui lòng đổi bộ lọc.</p></div>';}
+function renderPopular(){return `${header('Điểm đến nổi bật.','Danh sách các di tích có thông tin đã xuất bản.','HUE GUIDE · ĐIỂM ĐẾN CÔNG KHAI')}
+  <p class="hue-data-notice">Dữ liệu đồng bộ từ PostgreSQL. Không hiển thị lượt tham quan khi chưa có số liệu thống kê công khai.</p>
+  <div class="filters">${['Tất cả','Cung điện','Lăng tẩm','Di tích'].map(v=>`<button class="filter ${state.filter===v?'active':''}" data-filter="${v}">${v}</button>`).join('')}
+  <input class="local-search" id="local-search" value="${esc(state.query)}" placeholder="Tìm di tích…" aria-label="Lọc di tích"></div>
+  <div class="popular-list-header"><span id="popular-count">${popularPlaces().length} điểm đến</span><span>Di tích đã xuất bản</span></div>
+  <div id="attraction-results">${popularResults()}</div>`;}
+
 function filteredPlaces(){return places.filter(p=>(state.filter==='Tất cả'||p.type===state.filter)&&norm(p.name+' '+p.intro).includes(norm(state.query)))}
 
-function renderExplore(){const list=filteredPlaces();return `${header('Khám phá di tích.','Xem ảnh thật đã xuất bản, nghe thuyết minh và khám phá vị trí các di tích Huế.')}${dataNotice()}<div class="filters">${['Tất cả','Cung điện','Lăng tẩm','Di tích'].map(v=>`<button class="filter ${state.filter===v?'active':''}" data-filter="${v}">${v}</button>`).join('')}<input class="local-search" id="local-search" value="${esc(state.query)}" placeholder="Tìm tên di tích…" aria-label="Lọc di tích"></div><p class="hue-data-notice">${list.length} di tích · Ảnh được lấy từ Media công khai của Backend; di tích chưa có ảnh sẽ hiện ô chờ ảnh.</p><div id="attraction-results">${list.length?`<div class="hue-explorer-grid">${list.map(card).join('')}</div>`:'<div class="empty"><h2>Chưa tìm thấy di tích phù hợp</h2><p>Thử một từ khóa khác hoặc bỏ bộ lọc.</p></div>'}</div>`}
+function renderExplore(){const list=filteredPlaces();return `${header('Khám phá di tích.','Xem hình ảnh, nghe thuyết minh và khám phá các di tích Huế.')}${dataNotice()}<div class="filters">${['Tất cả','Cung điện','Lăng tẩm','Di tích'].map(v=>`<button class="filter ${state.filter===v?'active':''}" data-filter="${v}">${v}</button>`).join('')}<input class="local-search" id="local-search" value="${esc(state.query)}" placeholder="Tìm tên di tích…" aria-label="Lọc di tích"></div><div id="attraction-results">${list.length?`<div class="hue-explorer-grid">${list.map(card).join('')}</div>`:'<div class="empty"><h2>Chưa tìm thấy di tích phù hợp</h2><p>Thử một từ khóa khác hoặc bỏ bộ lọc.</p></div>'}</div>`}
 
+// M3.7: destination only; Google Maps chooses current position after the visitor clicks.
+function hueGoogleMapsDirections(p){
+ const lat=Number(p?.latitude),lon=Number(p?.longitude);
+ return p?.dbId&&validHuePoint(lat,lon)?'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lon)+'&travelmode=walking':'';
+}
 function renderMap(){
   const current=byId(state.mapId);
   const rows=places.map((p,i)=>`<button class="map-poi ${p.id===state.mapId?'active':''}" data-map-poi="${p.id}"><span class="pin-number">${String(i+1).padStart(2,'0')}</span><span><strong>${esc(p.name)}</strong><small>${esc(p.type)}</small></span></button>`).join('');
   const valid=attractionApi.status==='ready';
   const selected=validHuePoint(current.latitude,current.longitude)?current:null;
+  const googleHref=selected?hueGoogleMapsDirections(selected):'';
   const osmHref=selected?`https://www.openstreetmap.org/?mlat=${selected.latitude}&mlon=${selected.longitude}#map=15/${selected.latitude}/${selected.longitude}`:'https://www.openstreetmap.org/#map=11/16.45/107.57';
-  return `${header('Một bản đồ, nhiều lựa chọn.','Chọn di tích từ danh sách để xem vị trí thực tế trên OpenStreetMap.','KHÁM PHÁ KHÔNG GIAN DI SẢN',`<button class="button" id="enable-gps">${icon('pin')} ${state.location?'Đã bật định vị':'Bật định vị'}</button>`)}
+  return `${header('Một bản đồ, nhiều lựa chọn.','Chọn di tích, xem vị trí trên bản đồ và nghe những câu chuyện khi bạn đến gần.','KHÁM PHÁ KHÔNG GIAN DI SẢN',`<span class="subtle-pill">GPS · Tự thuyết minh</span>`)}
   ${dataNotice()}
   <div class="map-layout"><aside class="glass map-sidebar"><div class="card-top"><h2>Điểm đến</h2><span class="subtle-pill">${valid?places.length+' di tích':'Dữ liệu mẫu'}</span></div>${rows}</aside>
-  <div class="hue-map-column"><div id="hue-real-map" class="hue-real-map" role="region" aria-label="Bản đồ tương tác 10 di tích Huế"><div class="hue-map-loading">${valid?'Đang tải bản đồ OpenStreetMap…':'Cần kết nối backend để hiển thị tọa độ thật.'}</div></div>
-  ${renderNearbyGpsPanel()}
+  <div class="hue-map-column"><div id="hue-real-map" class="hue-real-map" role="region" aria-label="Bản đồ tương tác di tích Huế"><div class="hue-map-loading">${valid?'Đang tải bản đồ OpenStreetMap…':'Đang tải vị trí các điểm tham quan…'}</div></div>
+  <div id="hue-gps-controls">${hueGpsControlsHtml()}</div>
+  <div id="hue-gps-results">${renderNearbyGpsPanel()}</div>
   <div class="hue-map-selected glass"><div><h2 id="hue-map-selected-name">${esc(current.name)}</h2><p id="hue-map-selected-type">${esc(current.type)} · Điểm tham khảo</p></div><button class="button small" data-detail="${current.id}">Chi tiết ${icon('arrow')}</button></div>
-  <div class="map-switch-row"><a class="text-button" id="hue-open-osm" href="${osmHref}" target="_blank" rel="noopener noreferrer">${icon('map')} Mở vị trí trên OpenStreetMap</a><span class="gps-info">${state.location?'Có vị trí hiện tại · Không lưu lịch sử GPS':'Tọa độ chỉ mang tính tham khảo, không dùng làm chỉ dẫn cổng vào.'}</span></div>
+  <div class="map-switch-row"><a class="text-button" id="hue-open-osm" href="${osmHref}" target="_blank" rel="noopener noreferrer">${icon('map')} OpenStreetMap</a>
+  <a class="button small" id="hue-open-google-maps" href="${esc(googleHref)}" target="_blank" rel="noopener noreferrer" ${googleHref?'':'aria-disabled="true" tabindex="-1"'}>${icon('external')} Chỉ đường Google Maps</a><span class="gps-info">${hueGpsTour.mode==='simulation'?'Đang dùng vị trí mô phỏng':state.location?'GPS thật · Chỉ lưu lịch sử nếu bạn bật':'Tọa độ di tích là điểm tham khảo, không phải cổng vào.'}</span></div>
   </div></div>`;
 }
 
@@ -949,10 +961,10 @@ function injectPublicRouteStyles() {
 }
 
 function renderRoutes() {
-  const heading = header('Chọn một hành trình.', 'Khám phá các tuyến đã được xuất bản tại Huế.');
+  const heading = header('Chọn một hành trình.', 'Khám phá những hành trình tại Huế.');
   if (publicRouteApi.status === 'loading') return `${heading}<article class="glass route-detail"><h2>Đang tải tuyến tham quan…</h2></article>`;
   if (publicRouteApi.status === 'error') return `${heading}<article class="glass route-detail"><h2>Không thể tải tuyến tham quan</h2><p>${esc(publicRouteApi.message)}</p><button class="button small" id="retry-public-routes">Thử lại</button></article>`;
-  if (!publicRouteApi.items.length) return `${heading}<article class="glass route-detail"><h2>Chưa có tuyến được xuất bản</h2><p>Các tuyến đang được biên tập và xác minh trước khi công khai.</p></article>`;
+  if (!publicRouteApi.items.length) return `${heading}<article class="glass route-detail"><h2>Chưa có tuyến tham quan</h2><p>Hãy quay lại để khám phá những hành trình mới.</p></article>`;
   const selectedId = publicRouteApi.selectedId;
   const route = publicRouteApi.detailStatus === 'ready' ? publicRouteApi.detail : null;
   const isActive = route && validPublicRouteId(state.activeRoute?.id) === Number(route.id);
@@ -974,7 +986,6 @@ function renderRoutes() {
     const directionsHref = publicRouteDirectionsUrl(stops);
     const startedText = isActive && stops[index] ? `Điểm đang chọn ${index+1}/${stops.length}: ${esc(stops[index].attraction_name || stops[index].attraction_slug)} (theo hành trình, không phải GPS)` : '';
     details = `
-      <p class="eyebrow">TUYẾN ĐÃ XUẤT BẢN</p>
       <h2>${esc(route.name)}</h2>
       <p>${esc(route.description)}</p>
       <div class="route-journey-meta"><span>${stops.length} điểm dừng</span>
@@ -1021,9 +1032,9 @@ function renderAudio() {
   const narration = publishedNarration(p);
   const pending = p.narrationRequests?.[code] === 'loading';
   const status = narration ? 'Nội dung đã xuất bản · Đọc tự động bằng giọng của thiết bị.' :
-    pending ? 'Đang tải bản dịch đã xuất bản…' :
+    pending ? 'Đang chuẩn bị nội dung…' :
     p.narrationRequests?.[code] === 'error' ? 'Không tải được bản dịch. Hãy tải lại trang để thử lại.' :
-    'Chưa có bản dịch được xuất bản cho ngôn ngữ này. Hãy chọn ngôn ngữ khác.';
+    'Chưa có nội dung cho ngôn ngữ này. Hãy chọn ngôn ngữ khác.';
   const controls = `<p id="play-status">${esc(status)}</p>
     <div class="transport">
       <button id="audio-restart" ${narration?'':'disabled'} aria-label="Đọc lại từ đầu">${icon('route')}</button>
@@ -1032,7 +1043,7 @@ function renderAudio() {
     </div>
     <div class="progress-track"><span id="audio-progress" style="--progress:${state.progress}%"></span></div>
     <div class="time-row"><span id="audio-elapsed">${formatTime(state.elapsed)}</span><span>Text-to-Speech · không cần MP3</span></div>`;
-  return `${header('Lắng nghe câu chuyện Huế.','Thuyết minh tự động đa ngôn ngữ từ nội dung di tích đã xuất bản.')}
+  return `${header('Lắng nghe câu chuyện Huế.','Lắng nghe câu chuyện về các di tích Huế.')}
     <div class="audio-layout"><section class="audio-feature ${state.playing&&!state.paused?'playing':''}">
       <div class="section-line"><span>${icon('headphones')} THUYẾT MINH</span>
         <label class="audio-language-label" for="audio-language">Ngôn ngữ thuyết minh
@@ -1775,6 +1786,10 @@ function exportAdmin(){
   a.download='hue-guide-thong-ke-'+state.adminMode+'.csv';a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Đã xuất báo cáo CSV.');
 }
+// M3.7 Visitor Real Data — no prototype fallback when public API is offline.
+function huePublishedStatusPanel(){const failed=attractionApi.status==='error';return `${header('Di tích Huế','Khám phá di tích và danh thắng Huế.')}
+  <article class="glass hue-data-state" role="status"><h2>${failed?'Không tải được dữ liệu di tích':'Đang tải di tích…'}</h2>
+  <p>${esc(attractionApi.message)}</p>${failed?'<button type="button" class="button small" id="hue-attractions-retry">Thử tải lại</button>':''}</article>`;}
 function render(){
   // Each entry point owns its route space: User never renders Admin.
   if (!IS_ADMIN && location.hash === '#admin') {
@@ -1799,9 +1814,11 @@ function render(){
   const pages = {home:renderHome,weather:renderWeather,explore:renderExplore,popular:renderPopular,map:renderMap,routes:renderRoutes,audio:renderAudio,chat:renderChat,admin:renderAdmin};
   window.HueMap?.destroy();
   huePublicRouteMap.destroy();
-  content.innerHTML = pages[state.page]();
+  const visitorNeedsAttractions=!IS_ADMIN && ['home','explore','popular','map','audio'].includes(state.page);
+  content.innerHTML=visitorNeedsAttractions && attractionApi.status!=='ready'?huePublishedStatusPanel():pages[state.page]();
   if (state.page === 'map' && attractionApi.status === 'ready') {
     window.HueMap?.mount(places, state.mapId, state.location);
+    window.HueMap?.showHistory(hueGpsHistory.points);
   }
   if (state.page === 'routes' && publicRouteApi.detailStatus === 'ready' && publicRouteApi.detail?.stops?.length) {
     huePublicRouteMap.mount(publicRouteApi.detail.stops, publicRouteApi.detail.id);
@@ -1846,7 +1863,7 @@ function detail(id) {
       <h3>${icon('map')} Vị trí di tích</h3>
       <p>Vị trí trên bản đồ là tọa độ tham khảo, không đảm bảo đúng cổng vào.</p>
       ${mapEmbed}
-      <div class="hue-map-caption">Dữ liệu vị trí: PostgreSQL · Bản đồ: OpenStreetMap</div>
+      <div class="hue-map-caption">Bản đồ tham quan Huế · OpenStreetMap</div>
     </div>
     <p class="source-info">Giọng đọc từ trình duyệt và nội dung đã xuất bản trên Backend. Nội dung lịch sử và lối vào cần được đối chiếu với nguồn có thẩm quyền.</p>
   </div>`);
@@ -1862,7 +1879,7 @@ function openModal(html){lastFocused=document.activeElement;$('#modal').innerHTM
 function closeModal(){if($('#modal').hidden)return;$('#modal').querySelectorAll('audio[data-hue-real-audio]').forEach(a=>a.pause());$('#modal').hidden=true;document.body.style.overflow='';lastFocused?.focus?.()}
 function edit(id){const p=byId(id),d=state.drafts[id]||{};openModal(`<p class="eyebrow">BIÊN TẬP NỘI DUNG · MÔ PHỎNG</p><h2>${p.name}</h2><form id="edit-form" data-id="${id}"><label for="edit-name">Tên di tích</label><input id="edit-name" name="name" value="${esc(d.name||p.name)}" maxlength="100" required><label for="edit-description">Nội dung giới thiệu</label><textarea id="edit-description" name="description" maxlength="4000" required>${esc(d.description||p.text)}</textarea><label for="edit-source">Nguồn tham khảo</label><input id="edit-source" name="source" value="${esc(d.source||'')}" placeholder="Tên tài liệu hoặc nguồn cần kiểm chứng" maxlength="300"><div class="modal-actions"><button class="button" type="submit" name="action" value="draft">Lưu bản nháp</button><button class="button outline" type="submit" name="action" value="review">Gửi duyệt</button></div><div class="notice">Gửi duyệt yêu cầu có nguồn tham khảo. Đây là trạng thái mô phỏng, không xuất bản nội dung ra máy chủ.</div></form>`)}
 function formatTime(s){return Math.floor(s/60).toString().padStart(2,'0')+':'+Math.floor(s%60).toString().padStart(2,'0')}
-function stopAudio(update=true){document.querySelectorAll('audio[data-hue-real-audio]').forEach(a=>a.pause());speechSynthesisSafe()?.cancel();clearInterval(timer);state.playing=false;state.paused=false;state.progress=0;state.elapsed=0;state.utterance=null;if(update){if(['audio','home'].includes(state.page))render();else updateDock()}}
+function stopAudio(update=true){document.querySelectorAll('audio[data-hue-real-audio]').forEach(a=>a.pause());speechSynthesisSafe()?.cancel();clearInterval(timer);hueGpsTour.autoSpeaking=false;state.playing=false;state.paused=false;state.progress=0;state.elapsed=0;state.utterance=null;if(update){if(['audio','home'].includes(state.page))render();else updateDock()}}
 function speechSynthesisSafe(){return 'speechSynthesis'in window?window.speechSynthesis:null}
 function selectTrack(id) {
   stopAudio(false);
@@ -1886,7 +1903,7 @@ function playAudio() {
   const narration=publishedNarration(p);
   if (!narration?.description) {
     if(narrationLanguage() !== 'vi') ensureNarration(p);
-    toast('Chưa có bản dịch đã xuất bản cho ngôn ngữ này.');
+    toast('Chưa có nội dung cho ngôn ngữ này.');
     if(state.page!=='audio')navigate('audio');
     return;
   }
@@ -1904,11 +1921,12 @@ function playAudio() {
   // Capture the ID/language now; changing controls later cannot alter this event.
   const spokenAttractionId = Number(p.dbId);
   const spokenLanguage = language;
+  const simulatedSpeech = hueGpsTour.simulationSpeech === true;
   let ttsEventRecorded = false;
   u.onstart = () => {
     if (ttsEventRecorded || state.utterance !== u) return;
     ttsEventRecorded = true;
-    if (Number.isSafeInteger(spokenAttractionId) && spokenAttractionId > 0) {
+    if (!simulatedSpeech && Number.isSafeInteger(spokenAttractionId) && spokenAttractionId > 0) {
       void sendVisitorAnalyticsEvent({
         event_type:'tts_started',
         attraction_id:spokenAttractionId,
@@ -1917,14 +1935,14 @@ function playAudio() {
     }
   };
   u.onboundary=e=>{state.progress=Math.min(100,(e.charIndex/Math.max(1,u.text.length))*100);const bar=$('#audio-progress');if(bar)bar.style.setProperty('--progress',state.progress+'%');};
-  u.onend=()=>{clearInterval(timer);state.playing=false;state.paused=false;state.progress=100;if(['home','audio'].includes(state.page))render();else updateDock();};
+  u.onend=()=>{clearInterval(timer);hueGpsTour.autoSpeaking=false;state.playing=false;state.paused=false;state.progress=100;if(['home','audio'].includes(state.page))render();else updateDock();};
   u.onerror=e=>{if(['canceled','interrupted'].includes(e.error))return;stopAudio();toast('Chưa phát được giọng đọc.');};
-  trackEvent('audio',p.id,state.audioLanguage);
+  if (!simulatedSpeech) trackEvent('audio',p.id,state.audioLanguage);
   state.utterance=u;state.playing=true;state.paused=false;audioStarted=Date.now();synth.speak(u);
   timer=setInterval(()=>{if(!state.paused){state.elapsed=(Date.now()-audioStarted)/1000;if($('#audio-elapsed'))$('#audio-elapsed').textContent=formatTime(state.elapsed);}},500);
   if(['home','audio'].includes(state.page))render();else updateDock();
 }
-function updateDock(){const dock=$('#audio-dock');dock.hidden=!state.playing||['home','audio'].includes(state.page);if(!dock.hidden)dock.innerHTML=`<div><strong>${byId(state.trackId).name}</strong><small>${state.paused?'Đã tạm dừng':'Đang đọc nội dung mẫu'}</small></div><button data-play aria-label="Phát hoặc tạm dừng">${icon(state.paused?'play':'pause')}</button><button data-page="audio" aria-label="Mở trình phát">${icon('external')}</button><button id="dock-stop" aria-label="Dừng">${icon('close')}</button>`}
+function updateDock(){const dock=$('#audio-dock');dock.hidden=!state.playing||['home','audio'].includes(state.page);if(!dock.hidden)dock.innerHTML=`<div><strong>${byId(state.trackId).name}</strong><small>${state.paused?'Đã tạm dừng':'Đang thuyết minh'}</small></div><button data-play aria-label="Phát hoặc tạm dừng">${icon(state.paused?'play':'pause')}</button><button data-page="audio" aria-label="Mở trình phát">${icon('external')}</button><button id="dock-stop" aria-label="Dừng">${icon('close')}</button>`}
 function scrollChat(){requestAnimationFrame(()=>{const m=$('#messages');if(m)m.scrollTop=m.scrollHeight})}
 let chatResetVersion=0;
 async function sendQuestion(question){
@@ -1950,105 +1968,338 @@ async function sendQuestion(question){
     const text=status===503 ? 'Trợ lý AI đang tạm thời không khả dụng. Vui lòng thử lại sau.'
       : status===429 ? 'Bạn gửi quá nhiều yêu cầu. Vui lòng chờ rồi thử lại.'
       : status===400 ? 'Câu hỏi chưa hợp lệ. Vui lòng nhập lại.'
-      : 'Chưa kết nối được dịch vụ Chat. Hãy kiểm tra backend rồi thử lại.';
+      : 'Chưa kết nối được trợ lý. Vui lòng thử lại sau.';
     state.chat.push({role:'assistant',text,source:''});
   } finally {
     if(version===chatResetVersion){state.chatBusy=false;if(state.page==='chat')render()}
   }
 }
-// M2.8: Suggestions are shown only after explicit GPS permission on the map page.
+// M3.5 — Opt-in live geolocation + local-only simulated visit testing.
+// Simulator never calls /location-suggestions and never records TTS analytics.
+const hueGpsDemoAvailable = ['localhost', '127.0.0.1'].includes(location.hostname);
+const hueGpsTour = {
+  mode: 'off', watchId: null, watchGeneration: 0, lastRequest: 0,
+  busy: false, lastVisited: null, lastVisitAt: 0,
+  testSlug: '', testNear: false, simulationSpeech: false,
+  status: 'Bật GPS để theo dõi vị trí khi trang đang mở.'
+};
+
+// M3.7 Visitor GPS History: explicitly opted-in, browser-only, 7-day/200-point limit.
+const HUE_HISTORY_KEY='hue-real-gps-history-v1';
+function hueHistorySanitize(rows){
+ const now=Date.now();
+ return (Array.isArray(rows)?rows:[]).filter(p=>{
+  return p && validHuePoint(Number(p.latitude),Number(p.longitude)) &&
+    Number.isFinite(Number(p.time)) && Number(p.time)<=now+60000 && now-Number(p.time)<=7*86400000 &&
+    now-Number(p.time)>=0 && Number(p.accuracy)>=0 && Number(p.accuracy)<=100;
+ }).slice(-200).map(p=>({latitude:Number(p.latitude),longitude:Number(p.longitude),
+   time:Number(p.time),accuracy:Number(p.accuracy)}));
+}
+function hueHistoryLoad(){try{return hueHistorySanitize(JSON.parse(localStorage.getItem(HUE_HISTORY_KEY)||'[]'))}catch{return []}}
+const hueGpsHistory={saving:false,points:hueHistoryLoad()};
+function hueHistorySave(){
+ try{localStorage.setItem(HUE_HISTORY_KEY,JSON.stringify(hueGpsHistory.points));return true}
+ catch{hueGpsHistory.saving=false;toast('Không thể lưu lịch sử GPS trên thiết bị.');return false}
+}
+function hueHistoryRecord(position){
+ if(!hueGpsHistory.saving || hueGpsTour.mode!=='real')return;
+ const latitude=Number(position?.coords?.latitude),longitude=Number(position?.coords?.longitude);
+ const accuracy=Number(position?.coords?.accuracy),time=Date.now();
+ if(!validHuePoint(latitude,longitude)||!Number.isFinite(accuracy)||accuracy>100||accuracy<0)return;
+ const last=hueGpsHistory.points.at(-1);
+ if(last && (time-last.time<20000 || hueGpsDistanceM(last.latitude,last.longitude,latitude,longitude)<15))return;
+ hueGpsHistory.points=hueHistorySanitize([...hueGpsHistory.points,{latitude,longitude,accuracy,time}]);
+ if(hueHistorySave())window.HueMap?.showHistory(hueGpsHistory.points);
+}
+function hueHistoryToggle(){if(hueGpsTour.mode!=='real'&&!hueGpsHistory.saving){toast('Bật GPS thật trước khi lưu lịch sử.');return;}hueGpsHistory.saving=!hueGpsHistory.saving;hueRefreshGpsUi()}
+function hueHistoryClear(){
+ if(!window.confirm('Xóa toàn bộ lịch sử GPS đã lưu trên trình duyệt này?'))return;
+ hueGpsHistory.points=[];hueHistorySave();window.HueMap?.showHistory([]);hueRefreshGpsUi();
+}
+function hueHistoryPanel(){
+ const rows=hueGpsHistory.points.slice(-8).reverse();
+ return `<section class="hue-history-panel" aria-label="Lịch sử GPS thực">
+  <div class="hue-history-heading"><div><h3>Lịch sử hành trình</h3>
+  <p>Chỉ lưu GPS thật trên trình duyệt này, tối đa 200 điểm trong 7 ngày. Không gửi lên máy chủ, không lưu GPS ảo.</p></div>
+  <span class="hue-history-count">${hueGpsHistory.points.length} điểm</span></div>
+  <div class="hue-history-actions"><button class="button ${hueGpsHistory.saving?'outline':''} small" type="button" id="hue-history-toggle"
+  aria-pressed="${hueGpsHistory.saving}">${hueGpsHistory.saving?'Dừng lưu lịch sử':'Bật lưu lịch sử GPS thật'}</button>
+  <button class="button outline small" id="hue-history-clear" type="button" ${hueGpsHistory.points.length?'':'disabled'}>Xóa lịch sử</button></div>
+  ${rows.length?`<ol class="hue-history-list">${rows.map(p=>`<li><span>${new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(p.time))}
+   · Sai số ${Math.round(p.accuracy)} m</span><a rel="noopener noreferrer" target="_blank" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(p.latitude+','+p.longitude)}">Xem vị trí ↗</a></li>`).join('')}</ol>`:'<p class="hue-history-empty">Chưa có vị trí GPS thật nào được lưu.</p>'}
+ </section>`;
+}
+// M3.6 Visitor GPS UI — visitor wording, visually distinct GPS and simulation modes.
+function hueGpsControlsHtml() {
+  const running=hueGpsTour.mode==='real';
+  const sim=hueGpsTour.mode==='simulation';
+  const siteOptions=places.filter(p=>p.dbId&&validHuePoint(p.latitude,p.longitude))
+    .map(p=>`<option value="${esc(p.id)}" ${hueGpsTour.testSlug===p.id?'selected':''}>${esc(p.name)}</option>`).join('');
+  return `<section class="hue-location-panel" aria-label="Trợ lý thuyết minh theo vị trí">
+    <div class="hue-location-header"><div><span class="hue-location-eyebrow">ĐỒNG HÀNH KHÁM PHÁ HUẾ</span><h2>Thuyết minh theo bước chân</h2><p>Bật vị trí để lắng nghe câu chuyện khi đến gần di tích.</p></div>
+      <span class="hue-location-state ${sim?'is-demo':running?'is-real':'is-off'}">${sim?'● Đang mô phỏng':running?'● GPS đang bật':'○ GPS chưa bật'}</span></div>
+    <div class="hue-location-actions">
+      ${running?'<button type="button" class="button outline" id="hue-gps-stop">Tắt định vị</button>':'<button type="button" class="button" id="enable-gps">Bật GPS & tự thuyết minh</button>'}
+      <span class="hue-location-privacy">Bạn quyết định khi nào bật GPS và lưu lịch sử trên thiết bị.</span></div>
+    <div class="hue-location-message" role="status" id="hue-gps-mode-status">${esc(hueGpsTour.status)}</div>
+    ${hueHistoryPanel()}
+    ${hueGpsDemoAvailable ? `<div class="hue-simulation-studio">
+      <div class="hue-simulation-heading"><div><span class="hue-location-eyebrow">TRẢI NGHIỆM THỬ</span><h3>Chọn di tích để mô phỏng</h3><p>Khám phá tính năng ngay tại nhà, không cần đến Huế.</p></div><span class="hue-simulation-label">Vị trí ảo</span></div>
+      <label class="hue-simulation-select-label" for="hue-gps-sim-site">Điểm tham quan</label>
+      <div class="hue-simulation-select-wrap"><select id="hue-gps-sim-site" aria-label="Di tích mô phỏng">${siteOptions||'<option value="">Chưa có di tích để chọn</option>'}</select></div>
+      <div class="hue-simulation-actions"><button type="button" class="button small" id="hue-gps-sim-arrive" ${siteOptions?'':'disabled'}>Đến gần di tích</button>
+      <button type="button" class="button outline small" id="hue-gps-sim-leave" ${sim?'':'disabled'}>Đi ra xa</button>
+      ${sim?'<button type="button" class="text-button" id="hue-gps-stop">Kết thúc mô phỏng</button>':''}</div>
+      <p class="hue-simulation-help">Chấm màu hổ phách trên bản đồ là vị trí giả lập. Không dùng GPS của thiết bị.</p>
+      </div>` : ''}
+    </section>`;
+}
+
+function hueRefreshGpsUi() {
+  if (state.page !== 'map') return;
+  const controls = document.getElementById('hue-gps-controls');
+  if (controls) controls.innerHTML = hueGpsControlsHtml();
+  const suggestions = document.getElementById('hue-gps-results');
+  if (suggestions) suggestions.innerHTML = renderNearbyGpsPanel();
+}
+function hueGpsResetSuggestions() {
+  nearbyGps.requestId += 1;
+  nearbyGps.status = 'idle'; nearbyGps.items = []; nearbyGps.message = '';
+}
+function hueGpsClearTracking() {
+  hueGpsTour.watchGeneration += 1;
+  if (hueGpsTour.watchId !== null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(hueGpsTour.watchId);
+  }
+  hueGpsTour.watchId = null;
+  hueGpsTour.busy = false;
+}
+function hueStopGps(show=true) {
+  hueGpsClearTracking();
+  hueGpsTour.mode = 'off'; hueGpsHistory.saving=false; hueGpsTour.testNear = false;
+  hueGpsTour.lastVisited = null; hueGpsTour.lastVisitAt = 0;
+  hueGpsTour.simulationSpeech = false;
+  hueGpsTour.status = 'Đã tắt GPS và chế độ mô phỏng.';
+  state.location = null;
+  window.HueMap?.showLocation(null);
+  hueGpsResetSuggestions();
+  if (show && state.page === 'map') render();
+}
+function hueGpsDistanceM(lat1, lon1, lat2, lon2) {
+  const rad = n => n * Math.PI / 180;
+  const a = Math.sin(rad(lat2-lat1)/2)**2 +
+    Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2-lon1)/2)**2;
+  return Math.round(2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(a))));
+}
+function hueGpsUpdateMapLocation(point) {
+  if (!validHuePoint(Number(point.latitude), Number(point.longitude))) return;
+  // M3.6: Only transient marker state; preserve existing real/virtual GPS separation.
+  const accuracy=Number(point.accuracy_m);
+  state.location={latitude:Number(point.latitude),longitude:Number(point.longitude),
+    mode:hueGpsTour.mode==='simulation'?'simulation':'real',
+    accuracy_m:Number.isFinite(accuracy)&&accuracy>0?accuracy:null};
+  if(state.page==='map')window.HueMap?.showLocation(state.location);
+}
+
+function hueGpsListenTo(p, simulated=false) {
+  if (!p?.dbId) return;
+  const locale = narrationLanguage();
+  if (locale !== 'vi') {
+    // No synthesized translated text: only published localization is allowed.
+    if (!publishedNarration(p)) {
+      void ensureNarration(p);
+      hueGpsTour.status = 'Đang chuẩn bị thuyết minh. Bạn có thể bấm Nghe khi sẵn sàng.';
+      hueRefreshGpsUi();
+      return;
+    }
+  }
+  if (!publishedNarration(p)?.description) {
+    hueGpsTour.status = `${p.name} chưa có nội dung thuyết minh để phát.`;
+    hueRefreshGpsUi();
+    return;
+  }
+  // Do not interrupt a visitor's manually playing narration.
+  if (state.playing && !hueGpsTour.autoSpeaking) {
+    hueGpsTour.status = `Đã đến ${p.name}. Bạn đang nghe bản khác; bấm “Nghe ngay” để chuyển.`;
+    hueRefreshGpsUi();
+    return;
+  }
+  stopAudio(false);
+  state.trackId = p.id;
+  hueGpsTour.simulationSpeech = simulated;
+  try { playAudio(); }
+  finally { hueGpsTour.simulationSpeech = false; }
+  hueGpsTour.autoSpeaking = Boolean(state.playing);
+  hueGpsTour.status = state.playing
+    ? `Đang thuyết minh ${p.name}${simulated?' (định vị ảo)':''}.`
+    : `Đã đến ${p.name}. Nếu máy không tự phát, hãy bấm “Nghe ngay”.`;
+  hueRefreshGpsUi();
+}
+function hueGpsManualListen(slug) {
+  const p = places.find(x => x.id === slug && x.dbId);
+  if (!p) return;
+  // Manual click may override an earlier narration.
+  stopAudio(false);
+  hueGpsTour.autoSpeaking = true;
+  hueGpsListenTo(p, hueGpsTour.mode === 'simulation');
+}
 function renderNearbyGpsPanel() {
   if (nearbyGps.status === 'idle') return '';
   let body = '';
-  if (nearbyGps.status === 'loading') {
-    body = '<p>Đang kiểm tra các điểm gần vị trí của bạn…</p>';
-  } else if (nearbyGps.status === 'error') {
-    body = `<p role="status">${esc(nearbyGps.message)} Bạn vẫn có thể chọn di tích thủ công.</p>`;
-  } else if (!nearbyGps.items.length) {
-    body = `<p role="status">${esc(nearbyGps.message || 'Chưa có di tích gần vị trí mẫu. Bạn vẫn có thể chọn thủ công.')}</p>`;
-  } else {
-    body = nearbyGps.items.map(item => {
-      const attraction = places.find(p => Number(p.dbId) === Number(item.attraction_id));
-      if (!attraction) return '';
-      const meters = Number(item.distance_m);
-      const distance = Number.isFinite(meters) ? ` · ${Math.max(0,Math.round(meters))} m` : '';
-      return `<button class="button outline small" data-detail="${esc(attraction.id)}">${esc(attraction.name)}${distance} ${icon('arrow')}</button>`;
-    }).join('');
-  }
+  if (nearbyGps.status === 'loading') body = '<p>Đang tìm di tích gần bạn…</p>';
+  else if (nearbyGps.status === 'error') body = `<p role="status">${esc(nearbyGps.message)}</p>`;
+  else if (!nearbyGps.items.length) body = `<p role="status">${esc(nearbyGps.message || 'Chưa có điểm trong phạm vi. Bạn vẫn có thể chọn di tích thủ công.')}</p>`;
+  else body = nearbyGps.items.map(item => {
+    const p = places.find(x => x.dbId === Number(item.attraction_id));
+    if (!p) return '';
+    const distance = Number(item.distance_m);
+    return `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <b>${esc(p.name)}${Number.isFinite(distance)?` · ${Math.round(distance)} m`:''}</b>
+      <button class="button outline small" data-hue-gps-listen="${esc(p.id)}">Nghe ngay ${icon('headphones')}</button>
+      <button class="text-button" data-detail="${esc(p.id)}">Xem chi tiết</button>
+    </div>`;
+  }).join('');
   return `<section class="glass hue-gps-suggestions" aria-live="polite" style="padding:16px;margin:12px 0">
-    <div class="card-top"><h2>Gợi ý di tích gần bạn</h2>${icon('pin')}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px">${body}</div>
-    <small>Chỉ kiểm tra khi bạn bấm Bật định vị; không tự phát thuyết minh và không lưu lịch sử GPS.</small>
+    <div class="card-top"><h2>Di tích gần bạn</h2>${icon('pin')}</div>
+    <div style="display:grid;gap:8px">${body}</div>
+    <small>${hueGpsTour.mode==='simulation'?'KẾT QUẢ MÔ PHỎNG — không phải GPS thật.':'Gợi ý các di tích gần vị trí hiện tại của bạn.'}</small>
   </section>`;
 }
-
 async function requestNearbyGpsSuggestions(position) {
   const requestId = ++nearbyGps.requestId;
-  nearbyGps.status = 'loading';
-  nearbyGps.items = [];
-  nearbyGps.message = '';
-  if (state.page === 'map') render();
+  nearbyGps.status = 'loading'; nearbyGps.items=[]; nearbyGps.message='';
+  hueRefreshGpsUi();
   try {
     const token = await audioVisitorToken();
-    // Same-origin dev server forwards /api/v1 to Backend; do not expose Staff credentials.
     const response = await fetch('/api/v1/location-suggestions', {
-      method:'POST',
-      headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      method:'POST', cache:'no-store',
+      headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
       body:JSON.stringify({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy_m: position.coords.accuracy,
-        sampled_at: new Date(position.timestamp).toISOString()
+        latitude:position.coords.latitude, longitude:position.coords.longitude,
+        accuracy_m:position.coords.accuracy,
+        sampled_at:new Date(position.timestamp).toISOString()
       })
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
-    if (!Array.isArray(payload?.data)) throw new Error('Dữ liệu gợi ý không hợp lệ');
-    if (requestId !== nearbyGps.requestId) return;
-    nearbyGps.status = 'ready';
-    nearbyGps.items = payload.data.filter(item => places.some(p => Number(p.dbId) === Number(item.attraction_id)));
-    nearbyGps.message = payload?.meta?.manual_selection_recommended
-      ? 'Độ chính xác GPS chưa đủ. Hãy chọn di tích thủ công.'
-      : 'Không có gợi ý mới trong bán kính hoặc điểm vừa được gợi ý gần đây.';
-  } catch (error) {
-    if (requestId !== nearbyGps.requestId) return;
-    nearbyGps.status = 'error';
-    nearbyGps.items = [];
-    nearbyGps.message = 'Không tải được gợi ý GPS từ Backend.';
-    console.warn('[GPS Suggestions]', error);
+    if (!Array.isArray(payload?.data)) throw new Error('GPS API response không hợp lệ');
+    if (requestId !== nearbyGps.requestId || hueGpsTour.mode !== 'real') return;
+    nearbyGps.status='ready';
+    nearbyGps.items=payload.data.filter(item =>
+      places.some(p => p.dbId === Number(item.attraction_id)));
+    nearbyGps.message=payload?.meta?.manual_selection_recommended
+      ? 'Sai số GPS quá lớn. Vui lòng chọn di tích thủ công.'
+      : 'Chưa có điểm mới trong bán kính, hoặc điểm đã được gợi ý gần đây.';
+    if (nearbyGps.items.length && !document.hidden) {
+      const item=nearbyGps.items[0];
+      const p=places.find(x => x.dbId===Number(item.attraction_id));
+      const now=Date.now();
+      if (p && !(hueGpsTour.lastVisited===p.id && now-hueGpsTour.lastVisitAt<300000)) {
+        hueGpsTour.lastVisited=p.id; hueGpsTour.lastVisitAt=now;
+        state.mapId=p.id;
+        window.HueMap?.focus(p.id);
+        hueGpsListenTo(p,false);
+      }
+    }
+  } catch(err) {
+    if (requestId !== nearbyGps.requestId || hueGpsTour.mode !== 'real') return;
+    nearbyGps.status='error'; nearbyGps.items=[];
+    nearbyGps.message='Không kết nối được API gợi ý GPS. Bạn vẫn có thể chọn di tích thủ công.';
+    console.warn('[Auto GPS]',err);
   } finally {
-    if (requestId === nearbyGps.requestId && state.page === 'map') render();
+    if (requestId===nearbyGps.requestId) hueRefreshGpsUi();
   }
 }
-
-function enableGPS() {
-  if (!navigator.geolocation) {
-    toast('Thiết bị không hỗ trợ định vị. Bạn có thể chọn di tích thủ công.');
+function hueGpsOnPosition(position, generation) {
+  if (hueGpsTour.mode !== 'real' || generation !== hueGpsTour.watchGeneration || document.hidden) return;
+  const lat=Number(position.coords.latitude), lon=Number(position.coords.longitude);
+  const accuracy=Number(position.coords.accuracy);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(accuracy)) return;
+  if (!validHuePoint(lat,lon)) {
+    hueGpsResetSuggestions();
+    hueGpsTour.status='Bạn đang ngoài khu vực thử nghiệm Huế. Dùng chọn di tích thủ công hoặc định vị ảo trên localhost.';
+    hueRefreshGpsUi();
     return;
   }
-  const button = $('#enable-gps');
-  if (button) { button.disabled = true; button.textContent = 'Đang xin vị trí…'; }
-  navigator.geolocation.getCurrentPosition(
-    position => {
-      state.location = {latitude:position.coords.latitude, longitude:position.coords.longitude};
-      if (state.page === 'map') {
-        window.HueMap?.showLocation(state.location);
-        render();
-      }
-      toast('Đã nhận vị trí. Chỉ kiểm tra di tích gần khi bạn yêu cầu.');
-      void requestNearbyGpsSuggestions(position);
-    },
-    () => {
-      nearbyGps.requestId++;
-      nearbyGps.status = 'error';
-      nearbyGps.items = [];
-      nearbyGps.message = 'Chưa nhận được vị trí từ thiết bị.';
-      if (state.page === 'map') render();
-      toast('Chưa nhận được vị trí. Bạn vẫn có thể chọn di tích thủ công.');
-    },
-    {enableHighAccuracy:true, timeout:10000, maximumAge:10000}
-  );
+  hueGpsUpdateMapLocation({latitude:lat,longitude:lon,accuracy_m:accuracy});
+  hueHistoryRecord(position);
+  if (accuracy > 50) {
+    nearbyGps.requestId += 1;
+    nearbyGps.status='ready'; nearbyGps.items=[];
+    nearbyGps.message=`GPS sai số khoảng ${Math.round(accuracy)} m (cần không quá 50 m). Chọn di tích thủ công.`;
+    hueGpsTour.status='Đã nhận vị trí, đang chờ tín hiệu GPS chính xác hơn.';
+    hueRefreshGpsUi();
+    return;
+  }
+  hueGpsTour.status=`Đang theo dõi GPS thật (sai số khoảng ${Math.round(accuracy)} m).`;
+  const now=Date.now();
+  if (now-hueGpsTour.lastRequest < 12000 || hueGpsTour.busy) return;
+  hueGpsTour.lastRequest=now; hueGpsTour.busy=true;
+  Promise.resolve(requestNearbyGpsSuggestions(position)).finally(()=>{hueGpsTour.busy=false;});
 }
+function enableGPS() {
+  if (hueGpsTour.mode === 'real') {hueStopGps();return;}
+  if (!navigator.geolocation || !window.isSecureContext) {
+    toast('GPS cần HTTPS hoặc localhost và quyền định vị. Bạn vẫn có thể chọn di tích thủ công.');
+    return;
+  }
+  hueGpsClearTracking(); hueGpsResetSuggestions();
+  state.location=null; hueGpsTour.autoSpeaking=false;
+  hueGpsTour.mode='real'; hueGpsTour.lastRequest=0;
+  hueGpsTour.lastVisited=null; hueGpsTour.lastVisitAt=0;
+  hueGpsTour.status='Đang xin quyền định vị…';
+  const generation=hueGpsTour.watchGeneration;
+  try {
+    hueGpsTour.watchId=navigator.geolocation.watchPosition(
+      position => hueGpsOnPosition(position,generation),
+      error => {
+        if (generation!==hueGpsTour.watchGeneration || hueGpsTour.mode!=='real') return;
+        hueGpsTour.status=error.code===1
+          ? 'Bạn đã từ chối quyền vị trí. Có thể chọn di tích thủ công hoặc mở quyền trong cài đặt trình duyệt.'
+          : 'Chưa nhận được tín hiệu GPS. Hãy kiểm tra dịch vụ vị trí trên thiết bị.';
+        if (error.code===1) {
+          const reason=hueGpsTour.status;
+          hueStopGps(false);
+          hueGpsTour.status=reason;
+        }
+        hueRefreshGpsUi();
+      }, {enableHighAccuracy:true,timeout:15000,maximumAge:5000}
+    );
+  } catch(err) {
+    hueStopGps(false);
+    toast('Không bật được định vị trên thiết bị.');
+  }
+  hueRefreshGpsUi();
+}
+function hueSimulateArrival() {
+  if (!hueGpsDemoAvailable) return;
+  const slug=document.getElementById('hue-gps-sim-site')?.value || hueGpsTour.testSlug;
+  const p=places.find(x=>x.id===slug && x.dbId && validHuePoint(x.latitude,x.longitude));
+  if (!p) {toast('Chưa có di tích để lựa chọn.');return;}
+  const sameArrival=hueGpsTour.mode==='simulation' && hueGpsTour.testNear && hueGpsTour.testSlug===p.id;
+  hueGpsClearTracking(); hueGpsResetSuggestions();
+  hueGpsHistory.saving=false;
+  hueGpsTour.mode='simulation'; hueGpsTour.testSlug=p.id;
+  hueGpsTour.status=`Mô phỏng: đã đến ${p.name} (0 m).`;
+  hueGpsUpdateMapLocation(p); state.mapId=p.id;
+  if (state.page==='map') window.HueMap?.focus(p.id);
+  nearbyGps.status='ready';
+  nearbyGps.items=[{attraction_id:p.dbId,distance_m:0}];
+  if (sameArrival) {hueRefreshGpsUi();return;}
+  hueGpsTour.testNear=true;
+  hueRefreshGpsUi();
+  hueGpsListenTo(p,true);
+}
+function hueSimulateDeparture() {
+  if (hueGpsTour.mode !== 'simulation') return;
+  const p=places.find(x=>x.id===hueGpsTour.testSlug && x.dbId);
+  if (p) hueGpsUpdateMapLocation({latitude:Number(p.latitude)+0.007, longitude:Number(p.longitude)});
+  hueGpsTour.testNear=false;
+  hueGpsTour.status='Mô phỏng: đã đi xa khoảng 780 m. Có thể thử đến gần lần nữa.';
+  hueGpsResetSuggestions();
+  hueRefreshGpsUi();
+}
+
 document.addEventListener('click',e=>{const b=e.target.closest('button,a');if(!b){if(e.target===$('#modal'))closeModal();return}if(!IS_ADMIN && b.dataset.hueGalleryIndex !== undefined){selectHeritagePhoto(Number(b.dataset.hueGalleryIndex));return}else if(!IS_ADMIN && b.dataset.hueGalleryMove !== undefined){selectHeritagePhoto(heritageGalleryState.index+Number(b.dataset.hueGalleryMove));return}else if(!IS_ADMIN && b.hasAttribute('data-hue-real-stop')){const audio=document.querySelector('.audio-feature audio[data-hue-real-audio]');if(audio){audio.pause();audio.currentTime=0;}return}else if(!IS_ADMIN && b.dataset.hueDetailAudio !== undefined){const id=b.dataset.hueDetailAudio;if(state.trackId!==id){stopAudio(false);state.trackId=id;}playAudio();return}else if(!IS_ADMIN && b.hasAttribute('data-hue-detail-stop')){stopAudio(false);updateDock();return}else if(!IS_ADMIN && b.id==='retry-public-routes'){publicRouteApi.status='loading';render();loadPublishedRoutesFromBackend()}else if(!IS_ADMIN&&b.dataset.publicRouteSelect){selectPublishedRoute(b.dataset.publicRouteSelect)}else if(!IS_ADMIN&&b.dataset.publicRouteRetry){selectPublishedRoute(b.dataset.publicRouteRetry)}else if(!IS_ADMIN&&b.dataset.publicStopFocus!==undefined){huePublicRouteMap.focus(Number(b.dataset.publicStopFocus))}else if(!IS_ADMIN&&b.id==='public-route-fit-all'){huePublicRouteMap.fitAll()}else if(!IS_ADMIN&&b.id==='public-route-focus-current'){huePublicRouteMap.focus(Number(state.activeRoute?.step)||0)}else if(!IS_ADMIN&&b.id==='public-route-locate-me'){locatePublicRouteUser()}else if(!IS_ADMIN&&b.id==='start-public-route'){const route=publicRouteApi.detail;if(route?.stops?.length){state.activeRoute={id:Number(route.id),step:0};write('hue-active-route',state.activeRoute);trackEvent('route',String(route.id));const analyticsRouteId = Number(route.id);
 
 if (
@@ -2059,7 +2310,7 @@ if (
     event_type: 'route_started',
     route_id: analyticsRouteId
   });
-};render();toast('Đã bắt đầu tuyến. Bạn chuyển điểm dừng khi sẵn sàng.')}}else if(!IS_ADMIN&&b.id==='next-public-stop'){const route=publicRouteApi.detail;if(route?.stops?.length&&validPublicRouteId(state.activeRoute?.id)===Number(route.id)){if(state.activeRoute.step < route.stops.length-1){state.activeRoute.step++;toast('Điểm tiếp theo: '+(route.stops[state.activeRoute.step].attraction_name||'Điểm dừng'))}else{state.activeRoute=null;toast('Bạn đã hoàn thành hành trình!')}write('hue-active-route',state.activeRoute);render()}}else if(!IS_ADMIN&&b.id==='end-public-route'){state.activeRoute=null;write('hue-active-route',null);render();toast('Đã kết thúc hành trình.')}else if(b.dataset.exploreType){state.query='';state.filter=b.dataset.exploreType;navigate('explore')}else if(b.dataset.promoStep){setPromo(state.promoIndex+Number(b.dataset.promoStep));syncPromoTimer()}else if(b.dataset.promoDot!==undefined){setPromo(Number(b.dataset.promoDot));syncPromoTimer()}else if(b.id==='promo-pause'){togglePromo()}else if(IS_ADMIN&&b.closest('#staff-route-form')&&(b.id==='staff-route-add-stop'||b.dataset.staffStopUp!==undefined||b.dataset.staffStopDown!==undefined||b.dataset.staffStopRemove!==undefined)){const form=b.closest('#staff-route-form');const stops=staffRouteRawStops(form);if(b.id==='staff-route-add-stop')stops.push({attraction_id:'',visit_minutes:'',travel_minutes_from_previous:''});else if(b.dataset.staffStopUp!==undefined){const i=Number(b.dataset.staffStopUp);if(i>0&&i<stops.length)[stops[i-1],stops[i]]=[stops[i],stops[i-1]]}else if(b.dataset.staffStopDown!==undefined){const i=Number(b.dataset.staffStopDown);if(i>=0&&i<stops.length-1)[stops[i+1],stops[i]]=[stops[i],stops[i+1]]}else if(b.dataset.staffStopRemove!==undefined){const i=Number(b.dataset.staffStopRemove);if(stops.length>1&&i>=0&&i<stops.length)stops.splice(i,1)}renderStaffRouteStopRows(form,stops)}else if(IS_ADMIN&&b.dataset.staffRouteWorkflow){runStaffRouteWorkflow(b.dataset.routeId,b.dataset.staffRouteWorkflow)}else if(IS_ADMIN&&b.id==='staff-route-refresh'){loadStaffRoutesFromBackend()}else if(IS_ADMIN&&b.id==='staff-route-create'){showStaffRouteForm()}else if(IS_ADMIN&&b.dataset.staffRouteDetail){showStaffRouteDetail(b.dataset.staffRouteDetail)}else if(IS_ADMIN&&b.dataset.staffRouteEdit){const r=staffRouteApi.items.find(r=>String(r.id)===String(b.dataset.staffRouteEdit));if(r)showStaffRouteForm(r)}else if(b.dataset.adminTab){const previous=state.adminTab;state.adminTab=b.dataset.adminTab;render();if(state.adminTab==='routes' && staffRouteApi.status==='idle')loadStaffRoutesFromBackend();if(previous!==state.adminTab)playCloudTransition(adminTabs.find(t=>t[0]===state.adminTab)?.[2]||'Admin');$('.sidebar').classList.remove('open')}else if(b.hasAttribute('data-admin-review')){state.adminTab='content';state.adminFilter='in_review';render()}else if(b.id==='refresh-admin-attractions'){loadStaffAttractions()}else if(b.id==='add-admin-task'){adminTaskForm()}else if(b.id==='admin-export'){exportAdmin()}else if(b.id==='admin-refresh-analytics'){void loadStaffAnalytics(true)}else if(b.dataset.taskToggle){const t=state.tasks.find(t=>t.id===b.dataset.taskToggle);if(t)t.done=!t.done;write('hue-admin-tasks',state.tasks);render()}else if(b.dataset.taskDelete){state.tasks=state.tasks.filter(t=>t.id!==b.dataset.taskDelete);write('hue-admin-tasks',state.tasks);render()}else if(b.dataset.weatherDay!==undefined){weather.day=Number(b.dataset.weatherDay);paintWeather()}else if(b.id==='refresh-weather'||b.id==='retry-weather'){loadWeather(true)}else if(b.dataset.page){state.query='';state.filter='Tất cả';navigate(b.dataset.page)}else if(b.dataset.detail)detail(b.dataset.detail);else if(b.dataset.audio){selectTrack(b.dataset.audio);closeModal()}else if(b.dataset.track)selectTrack(b.dataset.track);else if(b.hasAttribute('data-play'))playAudio();else if(b.dataset.filter){state.filter=b.dataset.filter;render()}else if(b.dataset.adminFilter){state.adminFilter=b.dataset.adminFilter;render()}else if(b.dataset.mapPoi){state.mapId=b.dataset.mapPoi;window.HueMap?.focus(state.mapId);document.querySelectorAll('.map-poi').forEach(node=>node.classList.toggle('active',node.dataset.mapPoi===state.mapId));const current=byId(state.mapId);const title=$('#hue-map-selected-name'),subtitle=$('#hue-map-selected-type'),details=$('.hue-map-selected [data-detail]'),osm=$('#hue-open-osm');if(title)title.textContent=current.name;if(subtitle)subtitle.textContent=current.type+' · Điểm tham khảo';if(details)details.dataset.detail=current.id;if(osm&&validHuePoint(current.latitude,current.longitude))osm.href=`https://www.openstreetmap.org/?mlat=${current.latitude}&mlon=${current.longitude}#map=15/${current.latitude}/${current.longitude}`}else if(b.dataset.showMap){state.mapId=b.dataset.showMap;navigate('map')}else if(b.dataset.route){state.routeId=b.dataset.route;navigate('routes')}else if(b.dataset.selectRoute){state.routeId=b.dataset.selectRoute;render()}else if(b.dataset.question)sendQuestion(b.dataset.question);else if(b.dataset.edit)edit(b.dataset.edit);else if(b.id==='close-modal')closeModal();else if(b.id==='menu-toggle')$('.sidebar').classList.toggle('open');else if(b.id==='enable-gps')enableGPS();else if(b.id==='toggle-real-map'){state.realMap=!state.realMap;render()}else if(b.id==='start-route'){trackEvent('route',b.dataset.id);state.activeRoute={id:b.dataset.id,step:0};write('hue-active-route',state.activeRoute);render();toast('Đã bắt đầu tuyến. Bạn tự chuyển điểm dừng khi sẵn sàng.')}else if(b.id==='next-stop'){const r=routes.find(r=>r.id===state.activeRoute.id);if(state.activeRoute.step<r.stops.length-1){state.activeRoute.step++;toast('Điểm tiếp theo: '+byId(r.stops[state.activeRoute.step]).name)}else{state.activeRoute=null;toast('Bạn đã hoàn thành hành trình mẫu!')}write('hue-active-route',state.activeRoute);render()}else if(b.id==='audio-stop'||b.id==='dock-stop')stopAudio();else if(b.id==='audio-restart'){stopAudio(false);playAudio()}else if(b.id==='clear-chat'){chatResetVersion++;window.HueChatAPI.reset();state.chat=[];state.chatBusy=false;render()}});
+};render();toast('Đã bắt đầu tuyến. Bạn chuyển điểm dừng khi sẵn sàng.')}}else if(!IS_ADMIN&&b.id==='next-public-stop'){const route=publicRouteApi.detail;if(route?.stops?.length&&validPublicRouteId(state.activeRoute?.id)===Number(route.id)){if(state.activeRoute.step < route.stops.length-1){state.activeRoute.step++;toast('Điểm tiếp theo: '+(route.stops[state.activeRoute.step].attraction_name||'Điểm dừng'))}else{state.activeRoute=null;toast('Bạn đã hoàn thành hành trình!')}write('hue-active-route',state.activeRoute);render()}}else if(!IS_ADMIN&&b.id==='end-public-route'){state.activeRoute=null;write('hue-active-route',null);render();toast('Đã kết thúc hành trình.')}else if(b.dataset.exploreType){state.query='';state.filter=b.dataset.exploreType;navigate('explore')}else if(b.dataset.promoStep){setPromo(state.promoIndex+Number(b.dataset.promoStep));syncPromoTimer()}else if(b.dataset.promoDot!==undefined){setPromo(Number(b.dataset.promoDot));syncPromoTimer()}else if(b.id==='promo-pause'){togglePromo()}else if(IS_ADMIN&&b.closest('#staff-route-form')&&(b.id==='staff-route-add-stop'||b.dataset.staffStopUp!==undefined||b.dataset.staffStopDown!==undefined||b.dataset.staffStopRemove!==undefined)){const form=b.closest('#staff-route-form');const stops=staffRouteRawStops(form);if(b.id==='staff-route-add-stop')stops.push({attraction_id:'',visit_minutes:'',travel_minutes_from_previous:''});else if(b.dataset.staffStopUp!==undefined){const i=Number(b.dataset.staffStopUp);if(i>0&&i<stops.length)[stops[i-1],stops[i]]=[stops[i],stops[i-1]]}else if(b.dataset.staffStopDown!==undefined){const i=Number(b.dataset.staffStopDown);if(i>=0&&i<stops.length-1)[stops[i+1],stops[i]]=[stops[i],stops[i+1]]}else if(b.dataset.staffStopRemove!==undefined){const i=Number(b.dataset.staffStopRemove);if(stops.length>1&&i>=0&&i<stops.length)stops.splice(i,1)}renderStaffRouteStopRows(form,stops)}else if(IS_ADMIN&&b.dataset.staffRouteWorkflow){runStaffRouteWorkflow(b.dataset.routeId,b.dataset.staffRouteWorkflow)}else if(IS_ADMIN&&b.id==='staff-route-refresh'){loadStaffRoutesFromBackend()}else if(IS_ADMIN&&b.id==='staff-route-create'){showStaffRouteForm()}else if(IS_ADMIN&&b.dataset.staffRouteDetail){showStaffRouteDetail(b.dataset.staffRouteDetail)}else if(IS_ADMIN&&b.dataset.staffRouteEdit){const r=staffRouteApi.items.find(r=>String(r.id)===String(b.dataset.staffRouteEdit));if(r)showStaffRouteForm(r)}else if(b.dataset.adminTab){const previous=state.adminTab;state.adminTab=b.dataset.adminTab;render();if(state.adminTab==='routes' && staffRouteApi.status==='idle')loadStaffRoutesFromBackend();if(previous!==state.adminTab)playCloudTransition(adminTabs.find(t=>t[0]===state.adminTab)?.[2]||'Admin');$('.sidebar').classList.remove('open')}else if(b.hasAttribute('data-admin-review')){state.adminTab='content';state.adminFilter='in_review';render()}else if(b.id==='refresh-admin-attractions'){loadStaffAttractions()}else if(b.id==='add-admin-task'){adminTaskForm()}else if(b.id==='admin-export'){exportAdmin()}else if(b.id==='admin-refresh-analytics'){void loadStaffAnalytics(true)}else if(b.dataset.taskToggle){const t=state.tasks.find(t=>t.id===b.dataset.taskToggle);if(t)t.done=!t.done;write('hue-admin-tasks',state.tasks);render()}else if(b.dataset.taskDelete){state.tasks=state.tasks.filter(t=>t.id!==b.dataset.taskDelete);write('hue-admin-tasks',state.tasks);render()}else if(b.dataset.weatherDay!==undefined){weather.day=Number(b.dataset.weatherDay);paintWeather()}else if(b.id==='refresh-weather'||b.id==='retry-weather'){loadWeather(true)}else if(b.dataset.page){state.query='';state.filter='Tất cả';navigate(b.dataset.page)}else if(b.dataset.detail)detail(b.dataset.detail);else if(b.dataset.audio){selectTrack(b.dataset.audio);closeModal()}else if(b.dataset.track)selectTrack(b.dataset.track);else if(b.hasAttribute('data-play'))playAudio();else if(b.dataset.filter){state.filter=b.dataset.filter;render()}else if(b.dataset.adminFilter){state.adminFilter=b.dataset.adminFilter;render()}else if(b.dataset.mapPoi){state.mapId=b.dataset.mapPoi;window.HueMap?.focus(state.mapId);document.querySelectorAll('.map-poi').forEach(node=>node.classList.toggle('active',node.dataset.mapPoi===state.mapId));const current=byId(state.mapId);const title=$('#hue-map-selected-name'),subtitle=$('#hue-map-selected-type'),details=$('.hue-map-selected [data-detail]'),osm=$('#hue-open-osm'),google=$('#hue-open-google-maps');if(title)title.textContent=current.name;if(subtitle)subtitle.textContent=current.type+' · Điểm tham khảo';if(details)details.dataset.detail=current.id;if(osm&&validHuePoint(current.latitude,current.longitude))osm.href=`https://www.openstreetmap.org/?mlat=${current.latitude}&mlon=${current.longitude}#map=15/${current.latitude}/${current.longitude}`;if(google)google.href=hueGoogleMapsDirections(current)}else if(b.dataset.showMap){state.mapId=b.dataset.showMap;navigate('map')}else if(b.dataset.route){state.routeId=b.dataset.route;navigate('routes')}else if(b.dataset.selectRoute){state.routeId=b.dataset.selectRoute;render()}else if(b.dataset.question)sendQuestion(b.dataset.question);else if(b.dataset.edit)edit(b.dataset.edit);else if(b.id==='close-modal')closeModal();else if(b.id==='menu-toggle')$('.sidebar').classList.toggle('open');else if(b.id==='hue-attractions-retry'){attractionApi.status='loading';render();void loadAttractionsFromBackend()}else if(b.id==='enable-gps')enableGPS();else if(b.id==='hue-gps-stop')hueStopGps();else if(b.id==='hue-history-toggle')hueHistoryToggle();else if(b.id==='hue-history-clear')hueHistoryClear();else if(b.id==='hue-gps-sim-arrive')hueSimulateArrival();else if(b.id==='hue-gps-sim-leave')hueSimulateDeparture();else if(b.dataset.hueGpsListen)hueGpsManualListen(b.dataset.hueGpsListen);else if(b.id==='toggle-real-map'){state.realMap=!state.realMap;render()}else if(b.id==='start-route'){trackEvent('route',b.dataset.id);state.activeRoute={id:b.dataset.id,step:0};write('hue-active-route',state.activeRoute);render();toast('Đã bắt đầu tuyến. Bạn tự chuyển điểm dừng khi sẵn sàng.')}else if(b.id==='next-stop'){const r=routes.find(r=>r.id===state.activeRoute.id);if(state.activeRoute.step<r.stops.length-1){state.activeRoute.step++;toast('Điểm tiếp theo: '+byId(r.stops[state.activeRoute.step]).name)}else{state.activeRoute=null;toast('Bạn đã hoàn thành hành trình mẫu!')}write('hue-active-route',state.activeRoute);render()}else if(b.id==='audio-stop'||b.id==='dock-stop')stopAudio();else if(b.id==='audio-restart'){stopAudio(false);playAudio()}else if(b.id==='clear-chat'){chatResetVersion++;window.HueChatAPI.reset();state.chat=[];state.chatBusy=false;render()}});
 // A public visitor session is created in memory only to report actual MP3/WAV playback.
 // If progress API fails, audio remains playable; never use a Staff session for this purpose.
 let visitorAudioTokenPromise = null;
@@ -2141,7 +2392,7 @@ document.addEventListener('ended', event => {
 },true);
 document.addEventListener('error', event => {
   if (event.target instanceof HTMLAudioElement && event.target.matches('[data-hue-real-audio]')) {
-    toast('Không mở được file MP3/WAV. Kiểm tra URL và Backend đang chạy.');
+    toast('Không thể phát âm thanh. Vui lòng thử lại sau.');
   }
 },true);
 
@@ -2150,7 +2401,7 @@ document.addEventListener('input',e=>{if(IS_ADMIN&&e.target.closest?.('#staff-ro
 document.addEventListener('change',e=>{if(IS_ADMIN&&e.target.closest?.('#staff-route-form'))refreshStaffRouteStopSummary(e.target.closest('#staff-route-form'));if(e.target.id==='staff-route-filter'){state.staffRouteFilter=e.target.value;render()}else if(e.target.id==='admin-mode'){state.adminMode=e.target.value;render();if(state.adminMode==='server')void loadStaffAnalytics()}else if(e.target.id==='admin-period'){state.adminPeriod=Number(e.target.value);render();if(state.adminMode==='server')void loadStaffAnalytics()}else if(e.target.id==='audio-language'){stopAudio(false);state.audioLanguage=e.target.value;write('hue-audio-language',state.audioLanguage);if(narrationLanguage()!=='vi')ensureNarration(byId(state.trackId));render()}});
 document.addEventListener('keydown',e=>{if(!IS_ADMIN && ['ArrowLeft','ArrowRight'].includes(e.key) && e.target.closest?.('#modal .hue-gallery')){e.preventDefault();selectHeritagePhoto(heritageGalleryState.index+(e.key==='ArrowRight'?1:-1));return}if(e.target.closest?.('#promo-carousel')&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();setPromo(state.promoIndex+(e.key==='ArrowRight'?1:-1));syncPromoTimer()}if(e.key==='Escape'){closeModal();$('.sidebar').classList.remove('open')}if(e.target.id==='admin-search'&&e.key==='Enter'){state.adminSearch=e.target.value;render()}if(e.target.id==='global-search'&&e.key==='Enter'&&state.page==='admin'){state.adminSearch=e.target.value.trim();state.adminTab='content';render();return}if(e.target.id==='global-search'&&e.key==='Enter'){state.query=e.target.value.trim();state.filter='Tất cả';navigate('explore')}if(!$('#modal').hidden&&e.key==='Tab'){const items=$('#modal').querySelectorAll('button,input,textarea,a,select');const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
 document.addEventListener('submit',e=>{if(IS_ADMIN&&e.target.id==='staff-route-form'){e.preventDefault();saveStaffRouteForm(e.target);return}if(e.target.id==='admin-task-form'){e.preventDefault();const f=new FormData(e.target),title=String(f.get('title')||'').trim(),date=String(f.get('date')||'');if(!title||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;state.tasks.push({id:String(Date.now())+Math.random().toString(36).slice(2,7),title,date,done:false});write('hue-admin-tasks',state.tasks);closeModal();render();toast('Đã lưu công việc trên thiết bị.')}else if(e.target.id==='chat-form'){e.preventDefault();const input=$('#chat-input');sendQuestion(input.value)}else if(e.target.id==='edit-form'){e.preventDefault();const id=e.target.dataset.id;const f=new FormData(e.target),source=String(f.get('source')).trim(),review=e.submitter?.value==='review';if(review&&!source){toast('Vui lòng bổ sung nguồn tham khảo trước khi gửi duyệt.');$('#edit-source').focus();return}state.drafts[id]={name:String(f.get('name')).trim(),description:String(f.get('description')).trim(),source,status:review?'Chờ duyệt':'Bản nháp'};if(!state.drafts[id].name||!state.drafts[id].description){toast('Tên và nội dung không được để trống.');return}write('hue-content-drafts',state.drafts);closeModal();render();toast(review?'Đã chuyển sang chờ duyệt trên bản mô phỏng':'Đã lưu bản nháp trên thiết bị')}});
-window.addEventListener('hashchange',()=>{const previous=state.page;if(openingActive)finishOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');render();if(previous!==state.page)playCloudTransition($('#breadcrumb').textContent);window.scrollTo({top:0,behavior:'instant'});$('#content').focus({preventScroll:true})});window.addEventListener('pagehide',()=>{clearTimeout(cloudExitTimer);const cloud=$('#cloud-transition');if(cloud)cloud.hidden=true;clearInterval(promoTimer);document.querySelectorAll('audio[data-hue-real-audio]').forEach(a => a.pause());speechSynthesisSafe()?.cancel()});
+window.addEventListener('hashchange',()=>{const previous=state.page;if(openingActive)finishOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');render();if(previous!==state.page)playCloudTransition($('#breadcrumb').textContent);window.scrollTo({top:0,behavior:'instant'});$('#content').focus({preventScroll:true})});window.addEventListener('pagehide',()=>{hueStopGps(false);clearTimeout(cloudExitTimer);const cloud=$('#cloud-transition');if(cloud)cloud.hidden=true;clearInterval(promoTimer);document.querySelectorAll('audio[data-hue-real-audio]').forEach(a => a.pause());speechSynthesisSafe()?.cancel()});
 if(!IS_ADMIN){injectPublicRouteStyles();injectHeritageExplorerStyles();}if(!IS_ADMIN)initOpening();if(!IS_ADMIN&&location.hash!=='#admin')trackEvent('view',location.hash.slice(1)||'home');$('#menu-toggle').innerHTML=icon('menu');$('#search-icon').innerHTML=icon('search');if($('#top-popular'))$('#top-popular').innerHTML=icon('trend');render();loadAttractionsFromBackend();if (!IS_ADMIN) {
   loadPublishedRoutesFromBackend();
 };if(IS_ADMIN){loadStaffAttractions();void loadStaffAnalytics();void hueRefreshLiveVisitors();setInterval(()=>{void hueRefreshLiveVisitors()},10000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)void hueRefreshLiveVisitors()});}
