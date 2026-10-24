@@ -8,6 +8,11 @@ import {
   InvalidLocationSampleError,
 } from "../services/location-suggestion.service";
 
+import {
+  VisitorGrantDeniedError,
+  type VisitorGrantSession,
+} from "../services/visitor-access.service";
+
 import type {
   LocationSuggestionBody,
 } from "../validators/location-suggestion.validator";
@@ -35,13 +40,8 @@ export async function getLocationSuggestionsController(
   res: Response
 ): Promise<void> {
   try {
-    const {
-      sessionId,
-      languageCode,
-    } =
-      res.locals
-        .visitorSession as
-        VisitorSessionLocal;
+    const visitorSession = res.locals.visitorSession as VisitorGrantSession & {languageCode:string};
+    const {sessionId, languageCode} = visitorSession;
 
     const {
       latitude,
@@ -60,7 +60,8 @@ export async function getLocationSuggestionsController(
         longitude,
         accuracyM,
         sampledAt,
-        languageCode
+        languageCode,
+        visitorSession
       );
 
     /*
@@ -85,6 +86,10 @@ export async function getLocationSuggestionsController(
       },
     });
   } catch (error) {
+    if (error instanceof VisitorGrantDeniedError) {
+      res.status(403).json({error:{code:"FORBIDDEN",message:error.message}});
+      return;
+    }
     if (
       error instanceof
       InvalidLocationSampleError

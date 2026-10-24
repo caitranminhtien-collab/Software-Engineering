@@ -246,7 +246,7 @@ export async function reviewStaffWorkflow(
     if (!active || active.status !== "in_review") {
       throw new StaffWorkflowReviewConflictError();
     }
-    const reviewed = await reviewLocalizationRevision(resourceId, decision);
+    const reviewed = await reviewLocalizationRevision(resourceId, decision, reviewedBy);
     if (!reviewed) throw new StaffWorkflowReviewConflictError();
     return {
       id: resourceId,

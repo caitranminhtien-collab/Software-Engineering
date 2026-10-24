@@ -81,10 +81,17 @@ export async function findPublishedAudioMediaById(
           attraction_id,
           language_code,
           duration_seconds
-        FROM attraction_media
-        WHERE media_id = $1
-          AND media_type = 'audio'
-          AND status = 'published'
+        FROM attraction_media AS m
+        WHERE m.media_id = $1
+          AND m.media_type = 'audio'
+          AND m.status = 'published'
+          AND EXISTS (
+            SELECT 1 FROM attractions AS a
+            JOIN attraction_localizations AS l
+              ON l.attraction_id = a.attraction_id
+             AND l.language_code = 'vi' AND l.status = 'published'
+            WHERE a.attraction_id = m.attraction_id AND a.status = 'published'
+          )
         LIMIT 1
       `,
       [mediaId]

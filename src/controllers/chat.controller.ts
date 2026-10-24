@@ -12,6 +12,11 @@ import {
 import type {
   CreateChatMessageBody,
 } from "../validators/chat.validator";
+import {
+  assertVisitorAttractionAccess,
+  VisitorGrantDeniedError,
+  type VisitorGrantSession,
+} from "../services/visitor-access.service";
 
 interface VisitorSessionLocal {
   sessionId: number;
@@ -37,12 +42,8 @@ export async function createChatMessageController(
   res: Response
 ): Promise<void> {
   try {
-    const {
-      sessionId,
-    } =
-      res.locals
-        .visitorSession as
-        VisitorSessionLocal;
+    const visitorSession = res.locals.visitorSession as VisitorGrantSession;
+    const { sessionId } = visitorSession;
 
     const {
       question,
@@ -52,6 +53,8 @@ export async function createChatMessageController(
       res.locals
         .createChatMessageBody as
         CreateChatMessageBody;
+
+    await assertVisitorAttractionAccess(visitorSession, attractionId);
 
     const result =
       await createChatExchange(
@@ -65,6 +68,10 @@ export async function createChatMessageController(
       data: result,
     });
   } catch (error) {
+    if (error instanceof VisitorGrantDeniedError) {
+      res.status(403).json({error:{code:"FORBIDDEN",message:error.message}});
+      return;
+    }
     if (
       error instanceof
       ChatDependencyUnavailableError

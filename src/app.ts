@@ -17,6 +17,8 @@ import {
   staffSessionMiddleware,
 } from "./config/session";
 
+import { requirePublishedOrStaffMedia } from "./middleware/media-access.middleware";
+
 import attractionRoutes from "./routes/attraction.routes";
 import routeRoutes from "./routes/route.routes";
 import sessionRoutes from "./routes/session.routes";
@@ -44,16 +46,6 @@ if (
 
 app.use(express.json());
 
-app.use(
-  "/uploads/media",
-  express.static(
-    resolve(
-      process.cwd(),
-      "uploads",
-      "media"
-    )
-  )
-);
 
 app.get(
   "/api/v1/health/live",
@@ -122,6 +114,19 @@ app.get(
 );
 
 app.use(staffSessionMiddleware);
+
+// Uploaded files must be checked against their publication status.
+// Authenticate session cookie first to allow Staff previews, not anonymous draft access.
+app.use(
+  "/uploads/media",
+  requirePublishedOrStaffMedia,
+  express.static(resolve(process.cwd(), "uploads", "media"), {
+    etag: false,
+    lastModified: false,
+    setHeaders: res => res.setHeader("Cache-Control", "no-store"),
+  })
+);
+
 
 app.use(
   "/api/v1/audio-plays",

@@ -134,19 +134,18 @@ export async function submitLocalizationRevision(
   return result.rows[0] ?? null;
 }
 
-/** Approve retains in_review, matching the existing review contract.
- * Reject returns the working revision to draft without touching the public row. */
+/** Persist the reviewer decision. A publish operation requires approved_by. */
 export async function reviewLocalizationRevision(
   localizationId: number,
-  decision: "approve" | "reject"
+  decision: "approve" | "reject",
+  reviewedBy: number
 ): Promise<StaffLocalizationRevisionRow | null> {
-  if (decision === "approve") {
-    const current = await findActiveRevisionByLocalizationId(localizationId);
-    return current?.status === "in_review" ? current : null;
-  }
+  const approval = decision === "approve";
   const result = await db.query<StaffLocalizationRevisionRow>(
     `UPDATE public.attraction_localization_revisions AS r
-     SET status = 'draft', approved_by = NULL, published_at = NULL,
+     SET status = CASE WHEN $2 THEN 'in_review' ELSE 'draft' END,
+         approved_by = CASE WHEN $2::boolean THEN $3::bigint ELSE NULL::bigint END,
+         published_at = NULL,
          updated_at = CURRENT_TIMESTAMP
      FROM public.attraction_localizations AS l
      WHERE l.localization_id = $1
@@ -154,8 +153,9 @@ export async function reviewLocalizationRevision(
        AND l.language_code = r.language_code
        AND l.status = 'published'
        AND r.status = 'in_review'
-     RETURNING ${REVISION_COLUMNS.split(',').map((c) => 'r.'+c.trim()).join(', ')}`,
-    [localizationId]
+       AND r.base_content_version = l.content_version
+     RETURNING ${REVISION_COLUMNS.split(',').map((c) => 'r.' + c.trim()).join(', ')}`,
+    [localizationId, approval, reviewedBy]
   );
   return result.rows[0] ?? null;
 }
@@ -179,7 +179,7 @@ export interface PublishedLocalizationRevisionRow extends QueryResultRow {
  * Row locks + base-content-version checks reject stale / concurrent changes. */
 export async function publishLocalizationRevision(
   localizationId: number,
-  approvedBy: number
+  _publishedBy: number
 ): Promise<PublishedLocalizationRevisionRow | null> {
   const client = await db.connect();
   try {
@@ -211,7 +211,8 @@ export async function publishLocalizationRevision(
       [base.attraction_id, base.language_code]
     );
     const draft = draftResult.rows[0];
-    if (!draft || draft.base_content_version !== base.content_version) {
+    if (!draft || draft.approved_by === null ||
+        draft.base_content_version !== base.content_version) {
       await client.query("ROLLBACK");
       return null;
     }
@@ -241,7 +242,7 @@ export async function publishLocalizationRevision(
        RETURNING localization_id AS resource_id, status,
                  content_version AS version, approved_by, published_at`,
       [localizationId, draft.name, draft.description,
-       draft.source_references, approvedBy, base.content_version]
+       draft.source_references, draft.approved_by, base.content_version]
     );
     const published = publicResult.rows[0];
     if (!published) {
@@ -250,11 +251,11 @@ export async function publishLocalizationRevision(
     }
     const revisionResult = await client.query(
       `UPDATE public.attraction_localization_revisions
-       SET status = 'published', approved_by = $2,
+       SET status = 'published',
            published_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE revision_id = $1 AND status = 'in_review'
+       WHERE revision_id = $1 AND status = 'in_review' AND approved_by = $2
        RETURNING revision_id`,
-      [draft.revision_id, approvedBy]
+      [draft.revision_id, draft.approved_by]
     );
     if (revisionResult.rowCount !== 1) {
       await client.query("ROLLBACK");

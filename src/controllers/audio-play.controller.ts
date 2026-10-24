@@ -11,6 +11,11 @@ import {
   updateAudioPlay,
 } from "../services/audio-play.service";
 
+import {
+  VisitorGrantDeniedError,
+  type VisitorGrantSession,
+} from "../services/visitor-access.service";
+
 import type {
   CreateAudioPlayBody,
   UpdateAudioPlayBody,
@@ -36,13 +41,10 @@ export async function createAudioPlayController(
     } = res.locals
       .createAudioPlayBody as CreateAudioPlayBody;
 
-    const {
-      sessionId,
-    } = res.locals
-      .visitorSession as VisitorSessionLocal;
+    const visitorSession = res.locals.visitorSession as VisitorGrantSession;
 
     const result = await startAudioPlay(
-      sessionId,
+      visitorSession,
       mediaId
     );
 
@@ -50,6 +52,10 @@ export async function createAudioPlayController(
       data: result,
     });
   } catch (error) {
+    if (error instanceof VisitorGrantDeniedError) {
+      res.status(403).json({error:{code:"FORBIDDEN",message:error.message}});
+      return;
+    }
     if (error instanceof AudioMediaNotFoundError) {
       res.status(404).json({
         error: {
@@ -91,14 +97,11 @@ export async function updateAudioPlayController(
     } = res.locals
       .updateAudioPlayBody as UpdateAudioPlayBody;
 
-    const {
-      sessionId,
-    } = res.locals
-      .visitorSession as VisitorSessionLocal;
+    const visitorSession = res.locals.visitorSession as VisitorGrantSession;
 
     const result = await updateAudioPlay(
       playId,
-      sessionId,
+      visitorSession,
       playedSeconds,
       completed
     );
@@ -107,6 +110,10 @@ export async function updateAudioPlayController(
       data: result,
     });
   } catch (error) {
+    if (error instanceof VisitorGrantDeniedError) {
+      res.status(403).json({error:{code:"FORBIDDEN",message:error.message}});
+      return;
+    }
     if (error instanceof AudioPlayNotFoundError) {
       res.status(404).json({
         error: {

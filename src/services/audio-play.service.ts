@@ -4,6 +4,10 @@ import {
   findPublishedAudioMediaById,
   updateAudioPlayProgress,
 } from "../repositories/audio-play.repository";
+import {
+  assertVisitorAttractionAccess,
+  type VisitorGrantSession,
+} from "./visitor-access.service";
 
 export interface CreateAudioPlayResult {
   id: number;
@@ -49,7 +53,7 @@ export class AudioMediaNotFoundError extends Error {
 }
 
 export async function startAudioPlay(
-  sessionId: number,
+  session: VisitorGrantSession,
   mediaId: number
 ): Promise<CreateAudioPlayResult> {
   const media =
@@ -59,8 +63,10 @@ export async function startAudioPlay(
     throw new AudioMediaNotFoundError();
   }
 
+  await assertVisitorAttractionAccess(session, Number(media.attraction_id));
+
   const play = await createAudioPlay(
-    sessionId,
+    session.sessionId,
     mediaId
   );
 
@@ -85,14 +91,14 @@ export async function startAudioPlay(
 }
 export async function updateAudioPlay(
   playId: number,
-  sessionId: number,
+  session: VisitorGrantSession,
   playedSeconds: number,
   completed: boolean
 ): Promise<UpdateAudioPlayProgressResult> {
   const currentPlay =
     await findAudioPlayByIdAndSession(
       playId,
-      sessionId
+      session.sessionId
     );
 
   if (!currentPlay) {
@@ -114,6 +120,8 @@ export async function updateAudioPlay(
     throw new AudioMediaNotFoundError();
   }
 
+  await assertVisitorAttractionAccess(session, Number(media.attraction_id));
+
   if (
     media.duration_seconds !== null &&
     playedSeconds > media.duration_seconds
@@ -126,7 +134,7 @@ export async function updateAudioPlay(
   const updated =
     await updateAudioPlayProgress(
       playId,
-      sessionId,
+      session.sessionId,
       playedSeconds,
       completed
     );

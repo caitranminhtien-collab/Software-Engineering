@@ -5,6 +5,10 @@ import {
 import {
   findPublishedAttractionsForLocation,
 } from "../repositories/location-suggestion.repository";
+import {
+  accessibleVisitorAttractionIds,
+  type VisitorGrantSession,
+} from "./visitor-access.service";
 
 export interface LocationSuggestionResult {
   attraction_id: number;
@@ -191,8 +195,10 @@ export async function getLocationSuggestions(
   visitorLongitude: number,
   accuracyM: number,
   sampledAt: Date,
-  languageCode: string
+  languageCode: string,
+  session: VisitorGrantSession
 ): Promise<LocationSuggestionDecision> {
+  const allowedAttractionIds = await accessibleVisitorAttractionIds(session);
   validateSampleAge(
     sampledAt
   );
@@ -226,6 +232,8 @@ export async function getLocationSuggestions(
 
   const nearby =
     attractions
+      .filter(attraction => allowedAttractionIds === null ||
+        allowedAttractionIds.has(Number(attraction.attraction_id)))
       .map(
         (attraction) => {
           const distance =
