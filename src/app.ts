@@ -20,6 +20,7 @@ import {
 import attractionRoutes from "./routes/attraction.routes";
 import routeRoutes from "./routes/route.routes";
 import sessionRoutes from "./routes/session.routes";
+import visitorEventRoutes from "./routes/visitor-event.routes";
 import audioPlayRoutes from "./routes/audio-play.routes";
 import chatRoutes from "./routes/chat.routes";
 import locationSuggestionRoutes from "./routes/location-suggestion.routes";
@@ -30,6 +31,7 @@ import staffWorkflowRoutes from "./routes/staff-workflow.routes";
 import staffRouteRoutes from "./routes/staff-route.routes";
 import staffKnowledgeRoutes from "./routes/staff-knowledge.routes";
 import staffAccountRoutes from "./routes/staff-account.routes";
+import staffAnalyticsRoutes from "./routes/staff-analytics.routes";
 
 const app = express();
 
@@ -142,6 +144,11 @@ app.use(
 );
 
 app.use(
+  "/api/v1/visitor-events",
+  visitorEventRoutes
+);
+
+app.use(
   "/api/v1/chat",
   chatRoutes
 );
@@ -174,6 +181,11 @@ app.use(
 app.use(
   "/api/v1/staff/accounts",
   staffAccountRoutes
+);
+
+app.use(
+  "/api/v1/staff/analytics",
+  staffAnalyticsRoutes
 );
 
 app.use(

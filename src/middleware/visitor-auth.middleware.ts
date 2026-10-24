@@ -74,20 +74,26 @@ export async function requireVisitorSession(
     }
 
     res.locals.visitorSession = {
-      sessionId: Number(session.session_id),
-      languageCode: session.language_code,
-      accessScope: session.access_scope,
-      accessRouteId:
-        session.access_route_id === null
-          ? null
-          : Number(session.access_route_id),
-      accessAttractionId:
-        session.access_attraction_id === null
-          ? null
-          : Number(
-              session.access_attraction_id
-            ),
-    };
+  sessionId: Number(session.session_id),
+
+  languageCode: session.language_code,
+
+  accessScope: session.access_scope,
+
+  accessRouteId:
+    session.access_route_id === null
+      ? null
+      : Number(session.access_route_id),
+
+  accessAttractionId:
+    session.access_attraction_id === null
+      ? null
+      : Number(session.access_attraction_id),
+
+  // M2.6: Pass scoped access expiration to Analytics Service
+  accessExpiresAt:
+    session.access_expires_at ?? null,
+};
 
     next();
   } catch (error) {
