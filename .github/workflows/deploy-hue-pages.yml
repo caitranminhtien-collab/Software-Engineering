@@ -1,0 +1,61 @@
+name: Deploy Hue Guide Visitor to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-hue-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hue-guide-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Assemble public Visitor website only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _site/assets
+          for name in index.html app.js hue-chat-api.js hue-map.js hue-map.css styles.css theme.css; do
+            test -f "frontend/$name" || { echo "Missing frontend/$name" >&2; exit 1; }
+            cp "frontend/$name" "_site/$name"
+          done
+          cp -R frontend/assets/. _site/assets/
+          python3 - <<'PY'
+          from pathlib import Path
+          entry = Path('_site/index.html')
+          page = entry.read_text(encoding='utf-8')
+          # Keep staff-link DOM element for existing JS, but hide nonfunctional Admin link.
+          page = page.replace('href="admin.html" id="staff-link"',
+                              'href="#home" id="staff-link" style="display:none"')
+          entry.write_text(page, encoding='utf-8')
+          PY
+          touch _site/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
