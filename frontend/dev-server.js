@@ -17,7 +17,10 @@ http.createServer((req,res)=>{
   let pathname;
   try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
   catch { res.writeHead(400); res.end('Bad request'); return; }
-  if (pathname.startsWith('/api/v1/')) {
+  if (
+  pathname.startsWith('/api/v1/') ||
+  pathname.startsWith('/uploads/media/')
+) {
     const proxy = http.request({
       hostname:API_HOST,port:API_PORT,method:req.method,path:req.url,
       headers:{...req.headers,host:`${API_HOST}:${API_PORT}`},

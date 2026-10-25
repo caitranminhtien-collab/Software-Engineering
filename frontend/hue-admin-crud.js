@@ -302,56 +302,58 @@
 
     // Localization co workflow rieng voi Attraction.
 
-    const localizationButtons =
+        // Workflow cho localization, bao gồm revision của bản đã xuất bản.
+    const localizationButtons = (() => {
+      if (
+        !editing ||
+        !Number.isInteger(localizationId) ||
+        localizationId <= 0
+      ) {
+        return '';
+      }
 
-      editing && Number.isInteger(localizationId) && localizationId > 0
+      const resource = 'data-hue-admin-resource="localizations"';
+      const id = `data-hue-admin-id="${localizationId}"`;
 
-        ? localization?.status === 'draft'
+      if (localization?.status === 'draft') {
+        return `
+          <button type="button" class="button"
+            data-hue-admin-action="submit" ${resource} ${id}>
+            Gửi duyệt nội dung tiếng Việt
+          </button>`;
+      }
 
-          ? `<button type="button" class="button"
+      if (localization?.status === 'in_review') {
+        return `
+          <button type="button" class="button"
+            data-hue-admin-action="approve" ${resource} ${id}>
+            Duyệt nội dung tiếng Việt
+          </button>
+          <button type="button" class="button"
+            data-hue-admin-action="publish" ${resource} ${id}>
+            Xuất bản nội dung tiếng Việt
+          </button>
+          <button type="button" class="button outline"
+            data-hue-admin-action="reject" ${resource} ${id}>
+            Từ chối
+          </button>`;
+      }
 
-               data-hue-admin-action="submit"
+      if (localization?.status === 'published') {
+  return `
+    <button type="button" class="text-button"
+      data-hue-admin-action="approve" ${resource} ${id}>
+      Duyệt cập nhật
+    </button>
 
-               data-hue-admin-resource="localizations"
+    <button type="button" class="text-button"
+      data-hue-admin-action="publish" ${resource} ${id}>
+      Xuất bản cập nhật
+    </button>`;
+}
 
-               data-hue-admin-id="${localizationId}">
-
-               Gửi duyệt nội dung tiếng Việt
-
-             </button>`
-
-          : localization?.status === 'in_review'
-
-            ? `<button type="button" class="button outline"
-
-                 data-hue-admin-action="reject"
-
-                 data-hue-admin-resource="localizations"
-
-                 data-hue-admin-id="${localizationId}">
-
-                 Từ chối nội dung tiếng Việt
-
-               </button>
-
-               <button type="button" class="button"
-
-                 data-hue-admin-action="publish"
-
-                 data-hue-admin-resource="localizations"
-
-                 data-hue-admin-id="${localizationId}">
-
-                 Xuất bản nội dung tiếng Việt
-
-               </button>`
-
-            : ''
-
-        : '';
-
-
-
+      return '';
+    })();
     const readonlyNote = editing && !canWrite
 
       ? `<div class="notice">Bản ghi đang ở trạng thái <b>${esc(status)}</b>. Backend hiện không cho sửa trực tiếp di tích đã xuất bản hoặc đang chờ duyệt. Không có API xóa di tích.</div>`
@@ -996,6 +998,26 @@
       'Đã lưu bản mô tả tiếng Việt mới. Hãy Gửi duyệt → Xuất bản tiếng Việt trước khi dịch lại các ngôn ngữ.');
   }
 
+    // HUE_LOCALIZATION_PUBLISH_FIX_V1
+  // Keep authorization, CSRF and state/version checks in the existing Backend.
+  // A publish click explicitly authorizes approval + publication of localization.
+  async function approveThenPublishLocalization(localizationId) {
+    const safeId = requireId(localizationId);
+    try {
+      await request(`/staff/localizations/${safeId}/review`, {
+        method: 'POST', data: { decision: 'approve' }
+      });
+    } catch (error) {
+      throw new Error(`Không duyệt được bản cập nhật #${safeId}: ${error.message}`);
+    }
+    try {
+      return await request(`/staff/localizations/${safeId}/publish`, { method: 'POST' });
+    } catch (error) {
+      // Approval may have succeeded; do not submit or upload a duplicate revision.
+      throw new Error(`Đã duyệt nhưng chưa xuất bản được #${safeId}: ${error.message}`);
+    }
+  }
+
   async function workflowVietnameseSource(id, action) {
     id = requireId(id);
     const source = vietnameseSourceCache.get(id);
@@ -1006,6 +1028,11 @@
     const labels = {submit:'gửi duyệt',publish:'xuất bản',reject:'từ chối'};
     if (!Object.hasOwn(labels, action)) fail('Thao tác không hợp lệ.');
     if (!window.confirm(`Bạn muốn ${labels[action]} nội dung tiếng Việt #${source.id}?`)) return;
+    if (action === 'publish') {
+      await approveThenPublishLocalization(source.id);
+      await openTranslations(id, 'en', 'Đã duyệt và xuất bản bản gốc tiếng Việt.');
+      return;
+    }
     await request(`/staff/localizations/${requireId(source.id)}/${action === 'reject' ? 'review' : action}`, {
       method:'POST', ...(action === 'reject' ? {data:{decision:'reject'}} : {})
     });
@@ -1085,6 +1112,11 @@
       fail('Bản dịch thiếu nguồn tham khảo. Hãy bổ sung nguồn đã kiểm chứng trước khi gửi duyệt hoặc xuất bản.');
     }
     if (!window.confirm(`Bạn có chắc muốn ${action === 'publish' ? 'xuất bản' : action === 'reject' ? 'từ chối' : 'gửi duyệt'} bản dịch ${language}? Đã kiểm tra thuật ngữ và nguồn lịch sử chưa?`)) return;
+    if (action === 'publish') {
+      await approveThenPublishLocalization(loc.id);
+      await openTranslations(id, language, `Đã duyệt và xuất bản bản dịch ${language}.`);
+      return;
+    }
     await request(`/staff/localizations/${requireId(loc.id)}/${action === 'reject'?'review':action}`, {
       method:'POST', ...(action === 'reject' ? {data:{decision:'reject'}} : {})
     });
@@ -1411,7 +1443,11 @@
 
     const data = ['approve','reject'].includes(action) ? {decision:action} : undefined;
 
-    await request(`/staff/${resource}/${id}/${pathAction}`,{method:'POST',data});
+    if (resource === 'localizations' && action === 'publish') {
+      await approveThenPublishLocalization(id);
+    } else {
+      await request(`/staff/${resource}/${id}/${pathAction}`,{method:'POST',data});
+    }
 
     window.toast?.({submit:'Đã gửi duyệt.',approve:'Đã phê duyệt.',reject:'Đã từ chối.',publish:'Đã xuất bản.'}[action]);
 
