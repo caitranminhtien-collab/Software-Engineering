@@ -15,7 +15,12 @@ router.post("/heartbeat", requireVisitorSession, async (req, res): Promise<void>
     return;
   }
   try {
-    await recordVisitorPresence(browserId.toLowerCase());
+    const sessionId = Number(res.locals.visitorSession?.sessionId);
+    if (!Number.isSafeInteger(sessionId) || sessionId <= 0) {
+      res.status(401).json({error:{code:"UNAUTHORIZED",message:"Visitor session is required"}});
+      return;
+    }
+    await recordVisitorPresence(browserId.toLowerCase(), sessionId);
     res.setHeader("Cache-Control", "no-store");
     res.status(204).end();
   } catch (error) {
