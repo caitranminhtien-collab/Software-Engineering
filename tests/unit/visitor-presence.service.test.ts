@@ -27,6 +27,9 @@ const redis = vi.hoisted(() => {
   return {state,ops,chain};
 });
 vi.mock("../../src/config/redis", () => ({redisClient:{...redis.ops,multi:()=>redis.chain}}));
+vi.mock("../../src/repositories/visitor-presence.repository", () => ({
+  updateVisitorPresenceInDatabase: vi.fn(async () => undefined),
+}));
 import { getActiveVisitorCount, recordVisitorPresence } from "../../src/services/visitor-presence.service";
 
 const A = "123e4567-e89b-42d3-a456-426614174000";
@@ -35,18 +38,18 @@ const B = "123e4567-e89b-42d3-a456-426614174001";
 describe("visitor presence service", () => {
   beforeEach(() => {vi.useRealTimers(); redis.state.clear(); vi.clearAllMocks();});
   it("counts two different browsers without storing raw UUIDs", async () => {
-    await recordVisitorPresence(A); await recordVisitorPresence(B);
+    await recordVisitorPresence(A, 1); await recordVisitorPresence(B, 2);
     expect(await getActiveVisitorCount()).toBe(2);
     expect([...redis.state.keys()]).not.toContain(A);
     expect([...redis.state.keys()]).not.toContain(B);
   });
   it("deduplicates two tabs using the same browser UUID", async () => {
-    await recordVisitorPresence(A); await recordVisitorPresence(A);
+    await recordVisitorPresence(A, 1); await recordVisitorPresence(A, 1);
     expect(await getActiveVisitorCount()).toBe(1);
   });
   it("expires an inactive browser after 75 seconds without an unload request", async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-25T00:00:00Z"));
-    await recordVisitorPresence(A);
+    await recordVisitorPresence(A, 1);
     vi.advanceTimersByTime(75_100);
     expect(await getActiveVisitorCount()).toBe(0);
   });
