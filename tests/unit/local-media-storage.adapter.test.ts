@@ -198,13 +198,13 @@ describe(
         expect(
           result.publicUrl
         ).toBe(
-          "http://localhost:3000/uploads/media/3/00000000-0000-4000-8000-000000000000.png"
+          "/uploads/media/3/00000000-0000-4000-8000-000000000000.png"
         );
       }
     );
 
     it(
-      "uses MEDIA_PUBLIC_BASE_URL and removes trailing slashes",
+      "returns a relative path even when MEDIA_PUBLIC_BASE_URL is configured",
       async () => {
         process.env
           .MEDIA_PUBLIC_BASE_URL =
@@ -245,13 +245,13 @@ describe(
         expect(
           result.publicUrl
         ).toBe(
-          "https://cdn.example.com/uploads/media/7/00000000-0000-4000-8000-000000000000.mp3"
+          "/uploads/media/7/00000000-0000-4000-8000-000000000000.mp3"
         );
       }
     );
 
     it(
-      "uses PORT in the localhost fallback URL",
+      "returns a relative path independent of PORT",
       async () => {
         process.env.PORT =
           "4567";
@@ -292,7 +292,7 @@ describe(
         expect(
           result.publicUrl
         ).toContain(
-          "http://localhost:4567/uploads/media/9/"
+          "/uploads/media/9/"
         );
       }
     );
