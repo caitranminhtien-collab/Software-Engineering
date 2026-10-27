@@ -1,4 +1,8 @@
 import {
+  isLocalMediaPath,
+} from "../adapters/media/local-media-path";
+
+import {
   countPublishedAttractions,
   findPublishedAttractionById,
   findPublishedAttractionMedia,
@@ -171,27 +175,30 @@ function parseSources(
 function resolveMediaUrl(
   fileUrl: string
 ): string {
-  const legacyMediaOrigin =
-    "https://dicke-arrives-genealogy-millions.trycloudflare.com";
+  const legacyOrigins =
+    (process.env.MEDIA_LEGACY_ORIGINS ?? "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean);
 
   try {
     const parsedUrl = new URL(fileUrl);
 
     const isLegacyLocalMedia =
-      parsedUrl.origin === legacyMediaOrigin &&
-      /^\/uploads\/media\/[1-9]\d*\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp|gif|mp3|wav|ogg|m4a)$/i.test(
-        parsedUrl.pathname
-      );
+      legacyOrigins.includes(parsedUrl.origin) &&
+      isLocalMediaPath(parsedUrl.pathname) &&
+      !parsedUrl.search &&
+      !parsedUrl.hash &&
+      !parsedUrl.username &&
+      !parsedUrl.password;
 
     if (isLegacyLocalMedia) {
-      // Dùng origin của frontend để tải qua proxy.
       return parsedUrl.pathname;
     }
   } catch {
-    // Giữ nguyên đường dẫn tương đối hoặc giá trị không parse được.
+    // Giữ nguyên đường dẫn tương đối.
   }
 
-  // Giữ nguyên URL của các nguồn media bên ngoài khác.
   return fileUrl;
 }
 
