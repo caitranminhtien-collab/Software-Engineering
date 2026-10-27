@@ -167,6 +167,63 @@ describe(
       vi.resetAllMocks();
     });
 
+    it.each([
+      {
+        name: "converts legacy local media to a relative URL",
+        storedUrl:
+          "https://dicke-arrives-genealogy-millions.trycloudflare.com/uploads/media/3/test.jpg",
+        expectedUrl:
+          "/uploads/media/3/test.jpg",
+      },
+      {
+        name: "preserves external media URLs",
+        storedUrl:
+          "https://cdn.example.com/uploads/media/3/test.jpg",
+        expectedUrl:
+          "https://cdn.example.com/uploads/media/3/test.jpg",
+      },
+      {
+        name: "preserves relative media paths",
+        storedUrl:
+          "/uploads/media/3/test.jpg",
+        expectedUrl:
+          "/uploads/media/3/test.jpg",
+      },
+      {
+        name: "preserves unrelated paths on the legacy origin",
+        storedUrl:
+          "https://dicke-arrives-genealogy-millions.trycloudflare.com/other/test.jpg",
+        expectedUrl:
+          "https://dicke-arrives-genealogy-millions.trycloudflare.com/other/test.jpg",
+      },
+    ])(
+      "$name",
+      async ({ storedUrl, expectedUrl }) => {
+        vi.mocked(
+          findPublishedAttractionById
+        ).mockResolvedValue(
+          createDetailRow()
+        );
+
+        vi.mocked(
+          findPublishedAttractionMedia
+        ).mockResolvedValue([
+          createMediaRow({
+            file_url: storedUrl,
+          }),
+        ]);
+
+        const result =
+          await getPublishedAttractionById(
+            3,
+            "en"
+          );
+
+        expect(result.media).toHaveLength(1);
+        expect(result.media[0].url).toBe(expectedUrl);
+      }
+    );
+
     it(
       "returns paginated attractions in the requested language",
       async () => {
