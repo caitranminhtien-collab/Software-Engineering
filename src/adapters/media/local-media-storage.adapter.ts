@@ -30,28 +30,7 @@ export interface StoredLocalMediaFile {
   absolutePath: string;
 }
 
-function getPublicBaseUrl(): string {
-  const configured =
-    process.env.MEDIA_PUBLIC_BASE_URL
-      ?.trim();
 
-  if (configured) {
-    return configured.replace(
-      /\/+$/,
-      ""
-    );
-  }
-
-  const port =
-    process.env.PORT || "3000";
-
-  /*
-   * Development fallback only.
-   * Production should configure an HTTPS
-   * MEDIA_PUBLIC_BASE_URL.
-   */
-  return `http://localhost:${port}`;
-}
 
 class LocalMediaStorageAdapter {
   private readonly rootDirectory =
@@ -101,14 +80,9 @@ class LocalMediaStorageAdapter {
       }
     );
 
+       // Lưu đường dẫn độc lập với domain của môi trường.
     const publicUrl =
-      [
-        getPublicBaseUrl(),
-        "uploads",
-        "media",
-        input.attractionId,
-        filename,
-      ].join("/");
+      `/uploads/media/${input.attractionId}/${filename}`;
 
     return {
       publicUrl,

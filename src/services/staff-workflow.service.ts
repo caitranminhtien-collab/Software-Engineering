@@ -1,4 +1,8 @@
 import {
+  isLocalMediaPath,
+} from "../adapters/media/local-media-path";
+
+import {
   findLocalizationPublishReadiness,
   findPublishedVietnameseLocalization,
   findWorkflowResourceById,
@@ -32,6 +36,9 @@ import {
 function isAllowedMediaFileUrl(
   fileUrl: string
 ): boolean {
+    if (isLocalMediaPath(fileUrl)) {
+    return true;
+  }
   try {
     const url =
       new URL(fileUrl);
