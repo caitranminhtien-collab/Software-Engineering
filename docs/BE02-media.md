@@ -74,7 +74,9 @@ trên PostgreSQL và Redis thật.
 - Sau xuất bản: khách ẩn danh xem được ảnh.
 - Ảnh cũ Media #10 hiển thị được trong Admin
   sau khi dùng chung hàm chuyển URL.
-
+- Đã đối chiếu đủ 11 di tích qua API phân trang.
+- Cả 12 ảnh công khai đều trả HTTP 200 qua frontend proxy,
+  không dùng cookie đăng nhập; gồm ảnh thử Media #26.
 ## Còn cần kiểm tra trước nghiệm thu
 
 - Đối chiếu đầy đủ ảnh của 11 di tích.
