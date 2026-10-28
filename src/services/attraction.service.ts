@@ -1,4 +1,8 @@
 import {
+  resolveMediaUrl,
+} from "../adapters/media/media-url";
+
+import {
   countPublishedAttractions,
   findPublishedAttractionById,
   findPublishedAttractionMedia,
@@ -168,32 +172,7 @@ function parseSources(
   }
 }
 
-function resolveMediaUrl(
-  fileUrl: string
-): string {
-  const legacyMediaOrigin =
-    "https://dicke-arrives-genealogy-millions.trycloudflare.com";
 
-  try {
-    const parsedUrl = new URL(fileUrl);
-
-    const isLegacyLocalMedia =
-      parsedUrl.origin === legacyMediaOrigin &&
-      /^\/uploads\/media\/[1-9]\d*\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp|gif|mp3|wav|ogg|m4a)$/i.test(
-        parsedUrl.pathname
-      );
-
-    if (isLegacyLocalMedia) {
-      // Dùng origin của frontend để tải qua proxy.
-      return parsedUrl.pathname;
-    }
-  } catch {
-    // Giữ nguyên đường dẫn tương đối hoặc giá trị không parse được.
-  }
-
-  // Giữ nguyên URL của các nguồn media bên ngoài khác.
-  return fileUrl;
-}
 
 export async function getPublishedAttractionById(
   attractionId: number,

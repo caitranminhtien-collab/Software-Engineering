@@ -1,4 +1,5 @@
 import {
+  afterEach,
   beforeEach,
   describe,
   expect,
@@ -164,14 +165,23 @@ describe(
   "attraction.service",
   () => {
     beforeEach(() => {
-      vi.resetAllMocks();
-    });
+    vi.resetAllMocks();
+
+    vi.stubEnv(
+      "MEDIA_LEGACY_ORIGINS",
+      "https://legacy.example.com"
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
 
     it.each([
       {
         name: "converts legacy local media to a relative URL",
         storedUrl:
-          "https://dicke-arrives-genealogy-millions.trycloudflare.com/uploads/media/3/test.jpg",
+          "https://legacy.example.com/uploads/media/3/test.jpg",
         expectedUrl:
           "/uploads/media/3/test.jpg",
       },
@@ -192,9 +202,9 @@ describe(
       {
         name: "preserves unrelated paths on the legacy origin",
         storedUrl:
-          "https://dicke-arrives-genealogy-millions.trycloudflare.com/other/test.jpg",
+          "https://legacy.example.com/other/test.jpg",
         expectedUrl:
-          "https://dicke-arrives-genealogy-millions.trycloudflare.com/other/test.jpg",
+          "https://legacy.example.com/other/test.jpg",
       },
     ])(
       "$name",

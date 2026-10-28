@@ -1,4 +1,8 @@
 import {
+  resolveMediaUrl,
+} from "../adapters/media/media-url";
+
+import {
   createDraftMedia,
   listStaffMediaByAttraction,
 } from "../repositories/staff-media.repository";
@@ -162,7 +166,7 @@ export async function createStaffMedia(
         media.media_type,
 
       file_url:
-        media.file_url,
+        resolveMediaUrl(media.file_url),
 
       caption:
         media.caption,
@@ -220,7 +224,7 @@ export async function listStaffMedia(
     attraction_id: Number(media.attraction_id),
     language_code: media.language_code,
     media_type: media.media_type,
-    file_url: media.file_url,
+    file_url: resolveMediaUrl(media.file_url),
     caption: media.caption,
     credit: media.credit,
     rights_reference: media.rights_reference,
