@@ -3,8 +3,8 @@
 ## Hành vi
 
 - Upload local mới lưu đường dẫn `/uploads/media/<attractionId>/<filename>`.
-- API chi tiết di tích chuyển URL thuộc origin cũ được cấu hình
-  sang đường dẫn tương đối nếu đường dẫn local hợp lệ.
+- API chi tiết di tích và API Staff media chuyển URL thuộc origin cũ
+  được cấu hình sang đường dẫn tương đối nếu đường dẫn local hợp lệ.
 - URL media bên ngoài khác được giữ nguyên.
 - Frontend dev server proxy `/uploads/media/` về backend.
 - Production cần reverse proxy đường dẫn này về backend,
@@ -12,16 +12,29 @@
 
 ## Cấu hình dữ liệu cũ
 
-Trong .env:
+Trong `.env`:
 
+```dotenv
 MEDIA_LEGACY_ORIGINS=https://old-host.example.com
+```
 
 Có thể khai báo nhiều origin, phân cách bằng dấu phẩy.
 Mỗi origin gồm protocol, hostname và port nếu có;
-không thêm đường dẫn hoặc dấu / cuối.
+không thêm đường dẫn hoặc dấu `/` cuối.
 
 Biến này cần được giữ khi database còn chứa URL thuộc origin cũ.
 Không cần sửa SQL mỗi lần đổi địa chỉ môi trường.
+
+## Migration database
+
+File: `src/database/migrations/008_allow_relative_media_url.sql`.
+
+Migration giữ hỗ trợ URL HTTPS và HTTP localhost hiện có,
+đồng thời cho phép đường dẫn media local hợp lệ.
+
+Migration đã được áp dụng trên database DEV local.
+Môi trường khác cần review và áp dụng migration trước khi dùng
+adapter upload lưu đường dẫn tương đối.
 
 ## Quyền truy cập
 
@@ -31,25 +44,38 @@ Khách chỉ được xem khi media, di tích và bản tiếng Việt
 Staff đang hoạt động có vai trò admin, reviewer hoặc editor
 được xem trước media chưa xuất bản.
 
-## Bằng chứng kiểm tra
+## Kiểm thử tự động
 
-- Build TypeScript thành công trước phần bổ sung test cuối.
-- Giao diện local đã tải được ảnh sau khi cấu hình origin cũ.
-- Test service di tích: 11 đạt.
-- Test đường dẫn local: 16 đạt.
-- Test adapter lưu media: 4 đạt.
-- Test service Staff media: 5 đạt.
-- Test xuất bản media: 5 đạt.
-- Test middleware truy cập media: 11 đạt.
-- Test API workflow và bảo mật Staff: 21 đạt.
+Build TypeScript thành công.
 
-Các kết quả trên được chạy theo từng nhóm.
-Test database và Staff dùng mock không chứng minh toàn bộ
-luồng upload → duyệt → xuất bản trên database thật.
+Một lần chạy chung 6 file unit test: 52/52 đạt:
+
+- Service di tích: 11.
+- Đường dẫn local: 16.
+- Adapter lưu media: 4.
+- Service Staff media: 5.
+- Xuất bản media: 5.
+- Middleware truy cập media: 11.
+
+Nhóm test API workflow và bảo mật Staff đã chạy riêng: 21/21 đạt.
+
+Các test dùng mock không thay thế kiểm thử toàn bộ luồng
+trên PostgreSQL và Redis thật.
+
+## Kiểm tra thực tế trên local — 28/10/2026
+
+- Đã tạo tài khoản DEV riêng cho admin và editor.
+- Đã áp dụng migration `008_allow_relative_media_url.sql`.
+- Constraint PostgreSQL chấp nhận 3 URL hợp lệ,
+  từ chối 8 URL không hợp lệ trong transaction rollback.
+- Editor upload Media #26 thành công, lưu đường dẫn tương đối.
+- Khi còn draft: editor xem được, khách ẩn danh nhận Not Found.
+- Editor gửi duyệt, admin xuất bản Media #26 thành công.
+- Sau xuất bản: khách ẩn danh xem được ảnh.
+- Ảnh cũ Media #10 hiển thị được trong Admin
+  sau khi dùng chung hàm chuyển URL.
 
 ## Còn cần kiểm tra trước nghiệm thu
 
-- Tạo tài khoản Staff DEV riêng.
-- Thử upload → duyệt → xuất bản với PostgreSQL và Redis thật.
-- Kiểm tra ảnh nháp bằng phiên khách và phiên Staff thật.
 - Đối chiếu đầy đủ ảnh của 11 di tích.
+- Review migration và cấu hình triển khai cùng trưởng nhóm.
