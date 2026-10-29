@@ -1,0 +1,24 @@
+﻿services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: hue_app
+      POSTGRES_PASSWORD: hue_test_only
+      POSTGRES_DB: hue_tourism_test
+    ports:
+      - "127.0.0.1:5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hue_app -d hue_tourism_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30

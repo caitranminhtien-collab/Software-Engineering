@@ -16,12 +16,14 @@ async function main() {
   let client;
 
   try {
-    if (
+        if (
+      process.env.NODE_ENV !== "test" ||
       process.env.DB_HOST !== "127.0.0.1" ||
-      process.env.DB_PORT !== "5433" ||
-      process.env.DB_NAME !== "hue_tourism"
+      process.env.DB_NAME !== "hue_tourism_test"
     ) {
-      throw new Error("Run only against the local DEV database");
+      throw new Error(
+        "Run only against the dedicated test database"
+      );
     }
 
     client = await db.connect();
