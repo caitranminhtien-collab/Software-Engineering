@@ -1,4 +1,3 @@
-﻿
 name: CI
 
 on:
@@ -13,6 +12,51 @@ jobs:
   backend:
     name: Backend Test & Build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: hue_app
+          POSTGRES_PASSWORD: hue_test_only
+          POSTGRES_DB: hue_tourism_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hue_app -d hue_tourism_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      NODE_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_NAME: hue_tourism_test
+      DB_USER: hue_app
+      DB_PASSWORD: hue_test_only
+      DB_SSL: "false"
+      REDIS_URL: redis://127.0.0.1:6379
+      SESSION_SECRET: be03-test-session-secret-not-for-production
+      EMBEDDING_PROVIDER: dev
+      CHAT_PROVIDER: extractive
+      OPENAI_API_KEY: ""
+      GEMINI_API_KEY: ""
+      GOOGLE_API_KEY: ""
+      TEST_DB_PORT: "5432"
+      TEST_DB_PASSWORD: hue_test_only
+      TEST_REDIS_URL: redis://127.0.0.1:6379
 
     steps:
       - name: Checkout repository
@@ -27,11 +71,46 @@ jobs:
       - name: Install backend dependencies
         run: npm ci
 
+      - name: Build backend
+        run: npm run build
+
+      - name: Initialize empty test database
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          table_count=$(docker exec "$POSTGRES_CONTAINER" \
+            psql -X -U hue_app -d hue_tourism_test -tAc \
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';")
+
+          if [ "$table_count" != "0" ]; then
+            echo "Expected an empty test database" >&2
+            exit 1
+          fi
+
+          migrations=(
+            "src/database/migrations/001_core_schema.sql"
+            "M25_01_create_attraction_localization_revisions.sql"
+            "M26_02_create_visitor_events.sql"
+            "src/database/migrations/20261026_visitor_presence_last_seen.sql"
+            "src/database/migrations/007_add_performance_indexes.sql"
+            "src/database/migrations/008_allow_relative_media_url.sql"
+          )
+
+          for migration in "${migrations[@]}"; do
+            echo "Applying: $migration"
+            docker exec -i "$POSTGRES_CONTAINER" \
+              psql -X -U hue_app -d hue_tourism_test \
+              -v ON_ERROR_STOP=1 -f - < "$migration"
+          done
+
       - name: Run backend tests
         run: npm test
 
-      - name: Build backend
-        run: npm run build
+      - name: Run PostgreSQL and Redis regressions
+        run: node tests/run-real-services.cjs
 
   frontend:
     name: Frontend Static Checks
