@@ -50,6 +50,11 @@ export async function findTtsLanguages(days: 7 | 30): Promise<LanguageCountRow[]
         ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
           - ($1::integer - 1))::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'
       )
+      AND created_at < (
+        ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
+          + 1
+        )::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'
+      )
     GROUP BY language_code
     ORDER BY language_code ASC
   `, [days]);
@@ -71,6 +76,11 @@ export async function findAttractionViewRanking(days: 7 | 30): Promise<Attractio
       AND e.created_at >= (
         ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
           - ($1::integer - 1))::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'
+      )
+      AND e.created_at < (
+        ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
+          + 1
+        )::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'
       )
     WHERE a.status = 'published'
     GROUP BY a.attraction_id, a.slug, loc.name
