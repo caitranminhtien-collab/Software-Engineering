@@ -153,38 +153,57 @@ describe(
       }
     );
 
-    it(
+        it(
       "returns 503 when Redis is unavailable",
       async () => {
         vi.mocked(
           checkDatabaseConnection
-        ).mockResolvedValue(
-          undefined
+        ).mockResolvedValue(undefined);
+
+        vi.mocked(
+          checkRedisConnection
+        ).mockRejectedValue(
+          new Error("Redis unavailable")
+        );
+
+        const response = await request(app)
+          .get("/api/v1/health/ready")
+          .expect(503);
+
+        expect(response.body).toEqual({
+          status: "not_ready",
+          database: "connected",
+          redis: "unavailable",
+        });
+      }
+    );
+
+    it(
+      "keeps liveness available when both dependencies fail",
+      async () => {
+        vi.mocked(
+          checkDatabaseConnection
+        ).mockRejectedValue(
+          new Error("Database unavailable")
         );
 
         vi.mocked(
           checkRedisConnection
         ).mockRejectedValue(
-          new Error(
-            "Redis unavailable"
-          )
+          new Error("Redis unavailable")
         );
 
-        const response =
-          await request(app)
-            .get(
-              "/api/v1/health/ready"
-            );
+        await request(app)
+          .get("/api/v1/health/live")
+          .expect(200);
 
-        expect(
-          response.status
-        ).toBe(503);
+        const response = await request(app)
+          .get("/api/v1/health/ready")
+          .expect(503);
 
-        expect(
-          response.body
-        ).toEqual({
+        expect(response.body).toEqual({
           status: "not_ready",
-          database: "connected",
+          database: "unavailable",
           redis: "unavailable",
         });
       }
