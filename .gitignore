@@ -5,3 +5,4 @@ coverage/
 *.log
 # Uploaded media files
 /uploads/
+.env.staging
