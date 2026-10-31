@@ -1,0 +1,16 @@
+.git
+node_modules
+dist
+coverage
+
+.env
+.env.*
+**/.env
+**/.env.*
+
+uploads
+**/node_modules
+
+*.log
+*.dump
+*.zip

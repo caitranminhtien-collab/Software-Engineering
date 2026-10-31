@@ -1,0 +1,104 @@
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${BE04_POSTGRES_PASSWORD:?Missing staging PostgreSQL password}
+      POSTGRES_DB: hue_tourism_staging
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres -d hue_tourism_staging
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  backend:
+    image: hue-guide-backend:be04
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    restart: unless-stopped
+    init: true
+
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      TRUST_PROXY: "1"
+
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: hue_tourism_staging
+      DB_USER: hue_app
+      DB_PASSWORD: ${BE04_APP_PASSWORD:?Missing staging application password}
+      DB_SSL: "false"
+
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${BE04_SESSION_SECRET:?Missing staging session secret}
+
+      MEDIA_LEGACY_ORIGINS: ${BE04_MEDIA_LEGACY_ORIGINS:-}
+
+      EMBEDDING_PROVIDER: dev
+      CHAT_PROVIDER: extractive
+
+    volumes:
+      - type: bind
+        source: ${BE04_UPLOADS_PATH:?Missing staging uploads path}
+        target: /app/uploads
+        bind:
+          create_host_path: false
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/v1/health/ready', {signal: AbortSignal.timeout(4000)}).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 10
+
+  frontend:
+    image: hue-guide-frontend:be04
+
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:8080:80"
+
+    depends_on:
+      backend:
+        condition: service_healthy
+volumes:
+  postgres_data:
