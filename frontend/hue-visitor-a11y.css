@@ -1,0 +1,12 @@
+/* hue-visitor-a11y.css — FE05 (FILE MỚI, TÙY CHỌN: chỉ có tác dụng khi index.html nạp nó).
+ * Mọi quy tắc đều bắt đầu bằng body:not(.admin-mode) nên KHÔNG ảnh hưởng trang Admin.
+ * Chỉ bổ sung; không đổi bảng màu kem–nâu. */
+body:not(.admin-mode) .skip-link{position:absolute;left:12px;top:-60px;z-index:300;padding:10px 14px;border-radius:10px;background:#fcf1de;color:#4a3216;border:2px solid #8c5d29;text-decoration:none;font-weight:600}
+body:not(.admin-mode) .skip-link:focus{top:10px}
+body:not(.admin-mode) :is(button,a,input,select,textarea,[tabindex]):focus-visible{outline:3px solid #8c5d29;outline-offset:2px}
+body:not(.admin-mode){max-width:100%;overflow-x:hidden}
+body:not(.admin-mode) :is(img,video,iframe){max-width:100%}
+body:not(.admin-mode) .route-journey-stops li>div{min-width:0;overflow-wrap:break-word}
+@media (pointer:coarse){body:not(.admin-mode) :is(.button,.icon-button,.filter,.text-button,.nav-button,.map-poi,select){min-height:44px}body:not(.admin-mode) .icon-button{min-width:44px}}
+@media (max-width:420px){body:not(.admin-mode) :is(.route-journey-actions,.route-map-tools,.map-switch-row){flex-wrap:wrap}body:not(.admin-mode) :is(.route-journey-actions,.route-map-tools)>*{flex:1 1 100%}}
+@media (prefers-reduced-motion:reduce){body:not(.admin-mode) *,body:not(.admin-mode) *::before,body:not(.admin-mode) *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
