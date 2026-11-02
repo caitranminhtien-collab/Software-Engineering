@@ -21,6 +21,10 @@ async function createTestApp() {
 
   const app = express();
 
+  // Chỉ dùng trong ứng dụng kiểm thử độc lập.
+  // Cho phép Supertest mô phỏng IP từ reverse proxy.
+  app.set("trust proxy", 1);  
+
   app.post(
     "/test/login",
     staffLoginRateLimiter,
@@ -39,6 +43,33 @@ async function createTestApp() {
 describe("Staff login rate limiter", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("isolates failed login limits between different IPs", async () => {
+  const app = await createTestApp();
+
+  const ipA = "192.0.2.10";
+  const ipB = "192.0.2.20";
+
+  // IP A đăng nhập thất bại 5 lần.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await request(app)
+      .post("/test/login")
+      .set("X-Forwarded-For", ipA)
+      .expect(401);
+  }
+
+  // IP A bị chặn ở lần thứ 6.
+  await request(app)
+    .post("/test/login")
+    .set("X-Forwarded-For", ipA)
+    .expect(429);
+
+  // IP B vẫn hoạt động độc lập.
+  await request(app)
+    .post("/test/login")
+    .set("X-Forwarded-For", ipB)
+    .expect(401);
   });
 
   it("blocks the sixth failed request from the same IP", async () => {
