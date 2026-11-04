@@ -1,5 +1,5 @@
 'use strict';
-// FE03: kiểm thử helper GPS/bản đồ (node --test tests/frontend/hue-gps-helpers.test.cjs). Không mạng, không GPS thật.
+// FE03: kiểm thử helper GPS/bản đồ (node --test tests/frontend/hue-gps-helpers.unit.cjs). Không mạng, không GPS thật.
 const test = require('node:test'), assert = require('node:assert/strict');
 const g = require('../../frontend/hue-gps-helpers.js');
 const DAI_NOI = { latitude: 16.4698, longitude: 107.5786 };
