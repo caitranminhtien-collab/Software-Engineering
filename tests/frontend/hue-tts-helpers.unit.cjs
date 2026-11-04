@@ -1,5 +1,5 @@
 'use strict';
-// FE04: kiểm thử helper TTS/đa ngôn ngữ (node --test tests/frontend/hue-tts-helpers.test.cjs).
+// FE04: kiểm thử helper TTS/đa ngôn ngữ (node --test tests/frontend/hue-tts-helpers.unit.cjs).
 const test = require('node:test'), assert = require('node:assert/strict');
 const t = require('../../frontend/hue-tts-helpers.js');
 
