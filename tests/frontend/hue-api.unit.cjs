@@ -1,6 +1,6 @@
 'use strict';
 // FE02/FE06: kiểm thử logic tuyến Visitor bằng Node thuần (node --test), không cần trình duyệt,
-// không gọi mạng, không đụng dữ liệu thật. Chạy: node --test tests/frontend/hue-api.test.cjs
+// không gọi mạng, không đụng dữ liệu thật. Chạy: node --test tests/frontend/hue-api.unit.cjs
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { fetchJson, loadAllPublishedRoutes, normalizeRouteDetail, ApiError } = require('../../frontend/hue-api.js');
