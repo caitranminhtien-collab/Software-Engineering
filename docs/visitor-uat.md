@@ -7,7 +7,7 @@ Chạy từ thư mục gốc repo. Tất cả dùng API/GPS **mock**, không bac
 
 | Lệnh | Nội dung |
 |---|---|
-| `node --test tests/frontend/hue-api.test.cjs tests/frontend/hue-gps-helpers.test.cjs tests/frontend/hue-tts-helpers.test.cjs` | 31 test logic: tuyến 0/1/11/100/101/250, id hỏng/trùng, `stop_order`, tọa độ 0/0; GPS denied/timeout/0-0/ngoài Huế/sai số, link Google Maps/OSM, chống gọi lặp; TTS fallback ngôn ngữ, chọn giọng, chia câu, lỗi autoplay |
+| `node --test tests/frontend/hue-api.unit.cjs tests/frontend/hue-gps-helpers.unit.cjs tests/frontend/hue-tts-helpers.unit.cjs` | 31 test logic: tuyến 0/1/11/100/101/250, id hỏng/trùng, `stop_order`, tọa độ 0/0; GPS denied/timeout/0-0/ngoài Huế/sai số, link Google Maps/OSM, chống gọi lặp; TTS fallback ngôn ngữ, chọn giọng, chia câu, lỗi autoplay |
 | `node tests/frontend/visitor-smoke.cjs` | Tuyến trên trình duyệt: 0/11/250 tuyến, lỗi 500, 360px, `route_started` đúng 1 lần, ≤1 visitor session |
 | `node tests/frontend/visitor-audio-smoke.cjs` | Thuyết minh: đủ 15 điểm (không `slice(0,10)`), 7 ngôn ngữ, published/fallback/trống, thiết bị không có TTS |
 | `node tests/frontend/visitor-gps-responsive-smoke.cjs` | GPS: từ chối/hết giờ/0-0/ngoài Huế/sai số lớn/API mất mạng/không gọi lặp, nút Google Maps; 8 trang × 360/390/768/1366px không tràn ngang. Ảnh ở `./test-artifacts` (hoặc `SHOT_DIR`) |
