@@ -2,12 +2,19 @@ import express from "express";
 import request from "supertest";
 
 import {
+  afterEach,
   beforeEach,
   describe,
   expect,
   it,
   vi,
 } from "vitest";
+import {
+  cleanupBe09,
+  createBe09App,
+} from "../helpers/be09-app";
+
+afterEach(cleanupBe09);
 
 async function createTestApp() {
   // Mỗi test có một limiter và bộ đếm mới.
@@ -115,5 +122,44 @@ describe("Staff login rate limiter", () => {
     await request(app)
       .post("/test/login")
       .expect(429);
+  });
+
+  it("restores the allowance after the fifteen-minute window", async () => {
+    vi.useFakeTimers({
+      toFake: ["Date", "setInterval", "clearInterval"],
+    });
+    const app = await createTestApp();
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await request(app).post("/test/login").expect(401);
+    }
+    await request(app).post("/test/login").expect(429);
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 1);
+    await request(app).post("/test/login").expect(401);
+  });
+
+  it("limits the real login router before the authentication service", async () => {
+    const { app, auth, authenticate } = await createBe09App();
+    authenticate.mockRejectedValue(new auth.InvalidStaffCredentialsError());
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await request(app)
+        .post("/api/v1/staff/auth/login")
+        .send({
+          email: "be09@example.invalid",
+          password: "synthetic-rejected-password",
+        })
+        .expect(401);
+    }
+    expect(authenticate).toHaveBeenCalledTimes(5);
+    const blocked = await request(app)
+      .post("/api/v1/staff/auth/login")
+      .send({
+        email: "be09@example.invalid",
+        password: "synthetic-rejected-password",
+      })
+      .expect(429);
+    expect(blocked.body.error.code).toBe("TOO_MANY_LOGIN_ATTEMPTS");
+    expect(authenticate).toHaveBeenCalledTimes(5);
   });
 });
