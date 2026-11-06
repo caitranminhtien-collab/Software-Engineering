@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${BE04_POSTGRES_PASSWORD:?Missing staging PostgreSQL password}
-      POSTGRES_DB: hue_tourism_staging
+      POSTGRES_DB: ${BE04_DB_NAME:-hue_tourism_staging}
 
     volumes:
       - postgres_data:/var/lib/postgresql
@@ -14,7 +14,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - pg_isready -U postgres -d hue_tourism_staging
+        - pg_isready -h 127.0.0.1 -U postgres -d "$${POSTGRES_DB}"
       interval: 5s
       timeout: 5s
       retries: 20
@@ -32,7 +32,7 @@ services:
       timeout: 5s
       retries: 20
   backend:
-    image: hue-guide-backend:be04
+    image: ${BE04_BACKEND_IMAGE:-hue-guide-backend:be04}
 
     build:
       context: .
@@ -48,7 +48,7 @@ services:
 
       DB_HOST: postgres
       DB_PORT: "5432"
-      DB_NAME: hue_tourism_staging
+      DB_NAME: ${BE04_DB_NAME:-hue_tourism_staging}
       DB_USER: hue_app
       DB_PASSWORD: ${BE04_APP_PASSWORD:?Missing staging application password}
       DB_SSL: "false"
@@ -86,7 +86,7 @@ services:
       retries: 10
 
   frontend:
-    image: hue-guide-frontend:be04
+    image: ${BE04_FRONTEND_IMAGE:-hue-guide-frontend:be04}
 
     build:
       context: .
@@ -95,10 +95,52 @@ services:
     restart: unless-stopped
 
     ports:
-      - "127.0.0.1:8080:80"
+      - "127.0.0.1:${BE04_HTTP_PORT:-8080}:80"
 
     depends_on:
       backend:
         condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O
+        - /dev/null
+        - http://127.0.0.1/index.html
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 10
+
+  # Explicit opt-in only. Existing/restored staging must never run bootstrap.
+  bootstrap:
+    image: postgres:18
+    profiles:
+      - be10-bootstrap
+    restart: "no"
+    entrypoint:
+      - bash
+      - /bootstrap.sh
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGDATABASE: ${BE04_DB_NAME:-hue_tourism_staging}
+      PGPASSWORD: ${BE04_POSTGRES_PASSWORD:?Missing staging PostgreSQL password}
+      BE04_APP_PASSWORD: ${BE04_APP_PASSWORD:?Missing staging application password}
+      BE10_RUN_ID: ${BE10_RUN_ID:-}
+      BE10_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-}
+      BE10_BOOTSTRAP_CONFIRM: ${BE10_BOOTSTRAP_CONFIRM:-}
+    volumes:
+      - ./deploy/staging/bootstrap.sh:/bootstrap.sh:ro
+      - ./src/database/migrations:/migrations/core:ro
+      - ./M25_01_create_attraction_localization_revisions.sql:/migrations/M25.sql:ro
+      - ./M26_02_create_visitor_events.sql:/migrations/M26.sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
