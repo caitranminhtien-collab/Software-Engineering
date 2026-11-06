@@ -30,6 +30,11 @@ Các biến trong .env.staging:
 - BE04_UPLOADS_PATH
 - BE04_MEDIA_LEGACY_ORIGINS
 
+BE10 bổ sung `.env.staging.example` chỉ chứa placeholder. Có thể tùy chỉnh
+`BE04_DB_NAME`, `BE04_HTTP_PORT`, `BE04_BACKEND_IMAGE`, `BE04_FRONTEND_IMAGE`;
+khi không đặt, giá trị vẫn là database `hue_tourism_staging`, cổng loopback
+8080 và hai image tag `:be04` như trước. Không dùng file mẫu làm credential thật.
+
 Không commit mật khẩu, cookie, bản dump hoặc ảnh upload.
 
 ## Dữ liệu ban đầu
@@ -139,3 +144,30 @@ docker compose --env-file .env.staging -p hue-be04-staging -f compose.staging.ym
 
 Lệnh stop giữ lại container và dữ liệu.
 Không dùng down --volumes khi cần giữ database staging.
+
+## Bootstrap và nghiệm thu BE10 trên stack mới
+
+Profile `be10-bootstrap` không được bật trong các lệnh vận hành staging ở trên.
+Không chạy bootstrap trên database đã restore, DEV hoặc staging hiện hữu.
+Script chỉ chấp nhận project `hue-be10-<id>` và DB `hue_be10_test_<id>` khớp
+opt-in của một lần chạy mới; DB phải trống và chưa có role `hue_app`.
+
+Bootstrap chạy sáu migration hiện có bằng role quản trị, rồi cấp cho `hue_app`
+quyền CONNECT, USAGE schema, DML bảng và USAGE/SELECT sequence. Role ứng dụng
+không sở hữu DB/schema và không được cấp quyền superuser, createdb, createrole,
+replication, bypassrls hoặc CREATE schema. Không chạy migration tự động mỗi lần
+backend khởi động. Readiness chỉ kiểm tra kết nối, không thay nghiệm thu schema/API.
+
+PostgreSQL healthcheck dùng TCP; frontend có HTTP healthcheck cho index.html.
+depends_on vẫn chỉ điều phối khởi động. Unhealthy không tự kích hoạt restart;
+restart policy hiện tại vẫn là unless-stopped cho bốn service lâu dài.
+
+Chạy kiểm chứng độc lập, không cần `.env.staging` hoặc dữ liệu cá nhân:
+
+```powershell
+node deploy/staging/validate-be10.cjs
+```
+
+Runner tạo cấu hình tổng hợp, context build và uploads ngoài repository, project,
+DB, image tag và port riêng. Chỉ cleanup tài nguyên của lần chạy đó.
+Chi tiết và kết quả thực tế: [BE10-staging-validation.md](BE10-staging-validation.md).
