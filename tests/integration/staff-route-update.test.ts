@@ -261,6 +261,22 @@ describe("Staff route update PATCH API", () => {
     expect(updateStaffRoute).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { label: "array body", body: [] },
+    { label: "string minutes", body: { estimated_minutes: "90" } },
+    { label: "fractional minutes", body: { estimated_minutes: 1.5 } },
+  ])("rejects $label without calling the update service", async ({ body }) => {
+    const agent = await createLoggedInAgent();
+    const response = await agent
+      .patch(PATCH_PATH)
+      .set("x-csrf-token", CSRF_TOKEN)
+      .send(body);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(updateStaffRoute).not.toHaveBeenCalled();
+  });
+
   it("does not allow status or verified_at in PATCH body", async () => {
     const agent = await createLoggedInAgent();
     const response = await agent
