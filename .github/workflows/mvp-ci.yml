@@ -1,20 +1,31 @@
 name: Hue Tourism MVP CI
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch:
+
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-contract:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
+          cache-dependency-path: package-lock.json
       - name: Install locked dependencies
         run: npm ci
       - name: TypeScript compile
@@ -22,6 +33,21 @@ jobs:
       - name: Frontend syntax
         run: node --check frontend/app.js
       - name: MVP static integration contracts
-        run: node --test tests/M28_mvp_contract.node.cjs
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          node --test tests/M28_mvp_contract.node.cjs \
+            2>&1 | tee test-results/mvp-contract.log
+
+      - name: Upload failed MVP test diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mvp-test-failure-${{ github.run_attempt }}
+          path: test-results/mvp-contract.log
+          if-no-files-found: ignore
+          retention-days: 7
 # CI verifies build/static contracts. Database, Redis, GPS field, and Staff flows
 # require separate staging tests and are NOT marked as passed by this workflow.

@@ -8,6 +8,15 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     name: Backend Test & Build
@@ -67,6 +76,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install backend dependencies
         run: npm ci
@@ -75,6 +85,7 @@ jobs:
         run: npm run build
 
       - name: Initialize empty test database
+        id: test-database
         env:
           POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         shell: bash
@@ -107,14 +118,42 @@ jobs:
           done
 
       - name: Run backend tests
-        run: npm test
+        timeout-minutes: 4
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          npm test -- \
+            --reporter=default \
+            --reporter=junit \
+            --outputFile.junit=test-results/vitest.xml \
+            2>&1 | tee test-results/vitest.log
 
       - name: Run PostgreSQL and Redis regressions
-        run: node tests/run-real-services.cjs
+        if: ${{ !cancelled() && steps.test-database.outcome == 'success' }}
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          node tests/run-real-services.cjs 2>&1 | tee test-results/real-services.log
+
+      - name: Upload failed backend test diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-failure-${{ github.run_attempt }}
+          path: |
+            test-results/vitest.xml
+            test-results/vitest.log
+            test-results/real-services.log
+          if-no-files-found: ignore
+          retention-days: 7
 
   frontend:
     name: Frontend Static Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     defaults:
       run:
@@ -148,3 +187,22 @@ jobs:
           node --check hue-map.js
           node --check hue-chat-api.js
           node --check dev-server.js
+
+      - name: Run frontend unit tests
+        working-directory: .
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          node --test tests/frontend/*.unit.cjs \
+            2>&1 | tee test-results/frontend-unit.log
+
+      - name: Upload failed frontend test diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-failure-${{ github.run_attempt }}
+          path: test-results/frontend-unit.log
+          if-no-files-found: ignore
+          retention-days: 7
