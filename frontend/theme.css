@@ -215,3 +215,36 @@ body.admin-mode #staff-route-filter option {
   background: #fff7e9;
   color: #68482e;
 }
+
+/* ===== FE07 — Visitor Web desktop: cỡ chữ tối thiểu & phân cấp (chỉ trang Visitor, màn hình ≥1024px) =====
+ * Phạm vi: body[data-area="user"] (index.html). KHÔNG áp dụng cho admin.html.
+ * Chỉ đổi font-size/khoảng cách trình bày; không đổi cấu trúc DOM, selector JS hay nội dung.
+ * Thang chữ: 12px nhãn/chú thích · 13px nút/điều khiển/chữ phụ · 14px đoạn mô tả đầu trang. */
+@media (min-width:1024px){
+  body[data-area="user"]{--fs-label:12px;--fs-control:13px;--fs-lead:14px}
+  /* Nhãn, chú thích, huy hiệu */
+  body[data-area="user"] :is(.eyebrow,.sample-label,.nav-caption,.hue-location-eyebrow,.weather-source,.weather-source a,.tag,.subtle-pill,.pin-number,.category-count,.brand-light,.date-pill,.hue-explorer-type,.hue-simulation-label,.gps-info,#audio-elapsed,#popular-count,.time-row,.rain-chance,.weather-metrics,.source-info,.popular-list-header,.category-intro,.notice,.hue-map-warning,#hue-map-selected-type,.hue-data-notice,.profile small,.avatar){font-size:var(--fs-label)}
+  body[data-area="user"] :is(.breadcrumb,.breadcrumb span,.breadcrumb b){font-size:var(--fs-label)}
+  /* Nút, bộ lọc, ô nhập, nhãn điều khiển */
+  body[data-area="user"] :is(.button,.button.small,.button.outline,.button.light,.text-button,.filter,.chat-topic,.audio-language-label,#play-status,.profile strong){font-size:var(--fs-control)}
+  body[data-area="user"] :is(input#global-search,input#local-search,input#chat-input,.local-search){font-size:var(--fs-control)}
+  body[data-area="user"] :is(input#global-search,input#local-search,input#chat-input)::placeholder{font-size:var(--fs-control)}
+  body[data-area="user"] .nav-label{font-size:var(--fs-control)}
+  body[data-area="user"] .card-top h2{font-size:14px}
+  /* Đoạn mô tả dưới tiêu đề trang */
+  body[data-area="user"] .page-heading p:not(.eyebrow){font-size:var(--fs-lead)}
+  /* Giữ nút gọn gàng khi chữ lớn hơn */
+  body[data-area="user"] :is(.button.small,.button.outline){padding:8px 14px}
+  body[data-area="user"] :is(.category-choice small,.map-poi small,.track small,.chat-header small,.attraction-copy small,.weather-now p.weather-source,.promo-copy p,.weather-now p,.dash-route p,.dash-listen p,.outline-row span,.section-line span,.category-choice strong,.popular-preview-row strong,.weather-empty p,.map-poi strong,.track strong,.chat-welcome p,.attraction-copy p,.site-footer span,.route-choice small,.route-map-guide small,.chat-header strong){font-size:var(--fs-label)}
+  /* styles.css đặt .weather-source{font-size:8px!important}; chỉ ghi đè được bằng !important, giới hạn ở trang Visitor */
+  html body[data-area="user"] .weather-source{font-size:var(--fs-label)!important}
+  body[data-area="user"] .filter{padding:9px 16px}
+}
+
+/* ===== FE08 — Visitor Web: vòng focus & tương phản (chỉ trang Visitor; không đổi logic) ===== */
+body[data-area="user"] :is(input#global-search,input#chat-input,input#local-search):focus-visible{outline:2px solid #5b3f22;outline-offset:2px;border-radius:12px}
+body[data-area="user"] .global-search:focus-within{box-shadow:0 0 0 2px #5b3f22}
+/* Chữ phụ trước đây 3.7–4.5:1 → tối thiểu 4.5:1 (WCAG AA cho chữ thường) */
+body[data-area="user"] .category-count{color:#5f4528}
+body[data-area="user"] .hue-simulation-label{color:#7a4c0e}
+body[data-area="user"] .track small{color:#4a3520}
