@@ -59,7 +59,8 @@ async function open(browser, port, o = {}) {
     const id = (route.request().url().match(/(\d+)\.svg/) || [, '0'])[1];
     return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: svg('Ảnh thử ' + id, ['#7a5230', '#4a6b52', '#5a4a7a'][id % 3]) });
   });
-  await page.route('**/api/v1/**', route => {
+  await page.route('**/api/v1/**', async route => {
+    if (o.delayMs && !/visitor-sessions|visitor-events|visitor-presence/.test(route.request().url())) await new Promise(r => setTimeout(r, o.delayMs));
     const u = new URL(route.request().url());
     const json = b => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
     if (u.pathname === '/api/v1/visitor-sessions') return json({ data: { token: 'test-token-not-real' } });
