@@ -1,0 +1,7 @@
+/* Hue Guide — Bộ chọn ngôn ngữ Visitor (LANG01). Chỉ dùng cho trang Visitor (index.html). */
+.lang-switch{display:flex;align-items:center;flex:0 0 auto}
+.lang-switch label{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.lang-switch select{height:43px;min-width:118px;padding:0 34px 0 16px;border:1px solid rgba(255,255,255,.7);border-radius:30px;background:#fff9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235b3f22' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>") no-repeat right 14px center;color:#3b2a18;font:inherit;font-size:13px;cursor:pointer;appearance:none;-webkit-appearance:none}
+.lang-switch select:focus-visible{outline:2px solid #5b3f22;outline-offset:2px}
+.lang-switch option{color:#171717;background:#fff}
+@media (max-width:650px){.lang-switch select{min-width:92px;padding:0 28px 0 12px;font-size:12px}}
