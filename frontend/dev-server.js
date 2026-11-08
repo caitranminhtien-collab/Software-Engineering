@@ -11,7 +11,7 @@ const API_HOST = '127.0.0.1';
 const API_PORT = 3000;
 const root = __dirname;
 const mime = { '.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon' };
-const allowedFiles = new Set(['index.html','admin.html','app.js','admin-auth.js','hue-admin-crud.js','styles.css','theme.css','split.css','hue-map.css','hue-map.js','hue-chat-api.js']);
+const allowedFiles = new Set(['index.html','admin.html','app.js','admin-auth.js','hue-admin-crud.js','styles.css','theme.css','split.css','hue-map.css','hue-map.js','hue-chat-api.js','hue-i18n.js','hue-i18n-dict.js','hue-i18n-dom.js','hue-i18n.css']);
 
 http.createServer((req,res)=>{
   let pathname;

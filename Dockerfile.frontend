@@ -10,6 +10,9 @@ COPY frontend/app.js \
      frontend/admin-auth.js \
      frontend/hue-admin-crud.js \
      frontend/hue-chat-api.js \
+     frontend/hue-i18n.js \
+     frontend/hue-i18n-dict.js \
+     frontend/hue-i18n-dom.js \
      frontend/hue-map.js \
      /usr/share/nginx/html/
 
@@ -17,6 +20,7 @@ COPY frontend/styles.css \
      frontend/theme.css \
      frontend/split.css \
      frontend/hue-map.css \
+     frontend/hue-i18n.css \
      /usr/share/nginx/html/
 
 COPY frontend/assets /usr/share/nginx/html/assets

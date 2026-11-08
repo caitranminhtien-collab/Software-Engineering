@@ -51,6 +51,7 @@ async function open(browser, port, o = {}) {
     if (window.__noTts) { Object.defineProperty(window, 'speechSynthesis', { value: undefined, configurable: true }); }
   }, o.geo || null);
   if (!o.showOpening) await page.addInitScript(() => { try { sessionStorage.setItem('hue-opening-seen-v1', '1'); } catch {} });
+  if (o.blockStorage) await page.addInitScript(() => { const boom = () => { throw new DOMException('blocked', 'SecurityError'); }; for (const k of ['getItem', 'setItem', 'removeItem']) { try { Object.defineProperty(Storage.prototype, k, { value: boom, configurable: true }); } catch {} } });
   if (o.noTts) await page.addInitScript(() => { window.__noTts = true; });
   const list = makeAttractions(o.attractions ?? 11);
   const base = 'http://127.0.0.1:' + port;
