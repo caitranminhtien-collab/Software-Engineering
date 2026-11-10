@@ -1,0 +1,170 @@
+{
+  "commit": "89046bffb5a99e70de89c2662e56bc1b4a191810",
+  "browserVersion": "157.0.8103.39",
+  "playwrightVersion": "1.65.0",
+  "mode": "API mock, synthetic fixtures, viewport emulation; no audible TTS or physical-device verification",
+  "initialAttempt": {
+    "pass": 17,
+    "fail": 1,
+    "report": "report.json",
+    "log": "run.log"
+  },
+  "retry": {
+    "pass": 1,
+    "fail": 0,
+    "report": "report-audio-retry.json",
+    "log": "audio-retry.log",
+    "correction": "Select di-tich-01 explicitly before asserting its English narration; the initial runner assumed the default sorted selection was that attraction."
+  },
+  "final": {
+    "pass": 18,
+    "fail": 0
+  },
+  "screenshotCount": 19,
+  "results": [
+    {
+      "name": "language-vi-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-vi-1366.png"
+      ]
+    },
+    {
+      "name": "language-en-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-en-1366.png"
+      ]
+    },
+    {
+      "name": "language-zh-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-zh-1366.png"
+      ]
+    },
+    {
+      "name": "language-ja-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-ja-1366.png"
+      ]
+    },
+    {
+      "name": "language-ko-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-ko-1366.png"
+      ]
+    },
+    {
+      "name": "language-fr-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-fr-1366.png"
+      ]
+    },
+    {
+      "name": "language-de-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-de-1366.png"
+      ]
+    },
+    {
+      "name": "detail-en",
+      "status": "PASS",
+      "pictures": [
+        "detail-en.png"
+      ]
+    },
+    {
+      "name": "detail-vi-fallback",
+      "status": "PASS",
+      "pictures": [
+        "detail-vi-fallback.png"
+      ]
+    },
+    {
+      "name": "reload-en",
+      "status": "PASS",
+      "pictures": [
+        "reload-en.png"
+      ]
+    },
+    {
+      "name": "chat-draft",
+      "status": "PASS",
+      "pictures": [
+        "chat-draft-de-notice.png",
+        "chat-draft-vi-hidden.png"
+      ]
+    },
+    {
+      "name": "audio-en-content",
+      "status": "PASS",
+      "pictures": [
+        "audio-en-content.png"
+      ]
+    },
+    {
+      "name": "audio-ja-fallback-disabled",
+      "status": "PASS",
+      "pictures": [
+        "audio-ja-fallback-disabled.png"
+      ]
+    },
+    {
+      "name": "routes-empty-en",
+      "status": "PASS",
+      "pictures": [
+        "routes-empty-en.png"
+      ]
+    },
+    {
+      "name": "explore-error-en",
+      "status": "PASS",
+      "pictures": [
+        "explore-error-en.png"
+      ]
+    },
+    {
+      "name": "responsive-de-390",
+      "status": "PASS",
+      "pictures": [
+        "responsive-de-390.png"
+      ]
+    },
+    {
+      "name": "responsive-fr-390",
+      "status": "PASS",
+      "pictures": [
+        "responsive-fr-390.png"
+      ]
+    },
+    {
+      "name": "responsive-ja-390",
+      "status": "PASS",
+      "pictures": [
+        "responsive-ja-390.png"
+      ]
+    }
+  ],
+  "notVerified": [
+    "physical Android/iOS",
+    "real GPS",
+    "audible system TTS and voice quality",
+    "real API/DB/media/Chat provider",
+    "staging/HTTPS/proxy",
+    "human linguistic review"
+  ],
+  "historicalLang13": "111/111 at 89046bf reported by user; not rerun for LANG14",
+  "repositoryChanges": "none",
+  "commands": [
+    "$env:NODE_PATH = Join-Path $env:TEMP \"hue-lang12-playwright/node_modules\"",
+    "$env:SHOT_DIR = \"C:\\Users\\Dat\\AppData\\Local\\Temp\\hue-lang14-b4282fbb0c5f45deb9a01b16fea854b9\"",
+    "node (Join-Path $env:SHOT_DIR \"capture-lang14.cjs\") 89046bffb5a99e70de89c2662e56bc1b4a191810",
+    "node (Join-Path $env:SHOT_DIR \"capture-lang14-audio-retry.cjs\") 89046bffb5a99e70de89c2662e56bc1b4a191810",
+    "git diff --check"
+  ]
+}
