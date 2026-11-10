@@ -34,7 +34,7 @@ function svg(label, color) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="${color}"/><text x="400" y="260" font-size="44" text-anchor="middle" fill="#fff" font-family="sans-serif">${label}</text></svg>`;
 }
 
-/** options: showOpening(bool: giữ màn mở đầu), attractions(n), routes(n), routesStatus, failImages(bool), geo({error|coords}), viewport, hash, noTts, locale */
+/** options: showOpening(bool: giữ màn mở đầu), attractions(n), routes(n), routesStatus, failImages(bool), geo({error|coords}), viewport, hash, noTts, locale, attractionTranslations(language -> id -> name/description) */
 async function open(browser, port, o = {}) {
   const ctx = await browser.newContext({ viewport: o.viewport || { width: 1366, height: 768 }, locale: o.locale || 'vi-VN' });
   const page = await ctx.newPage();
@@ -54,6 +54,20 @@ async function open(browser, port, o = {}) {
   if (o.blockStorage) await page.addInitScript(() => { const boom = () => { throw new DOMException('blocked', 'SecurityError'); }; for (const k of ['getItem', 'setItem', 'removeItem']) { try { Object.defineProperty(Storage.prototype, k, { value: boom, configurable: true }); } catch {} } });
   if (o.noTts) await page.addInitScript(() => { window.__noTts = true; });
   const list = makeAttractions(o.attractions ?? 11);
+  function localizedAttraction(item, language) {
+    if (!o.attractionTranslations) {
+      return item;
+    }
+    const translation = o.attractionTranslations[language]?.[item.id];
+    const contentLanguage = translation ? language : 'vi';
+    return {
+      ...item,
+      ...translation,
+      requested_language: language,
+      content_language: contentLanguage,
+      fallback_used: language !== contentLanguage
+    };
+  }
   const base = 'http://127.0.0.1:' + port;
   await page.route('**/media-mock/**', route => {
     if (o.failImages) return route.fulfill({ status: 404, body: '' });
@@ -69,12 +83,20 @@ async function open(browser, port, o = {}) {
     requests.push(u.pathname + u.search);
     if (u.pathname === '/api/v1/attractions') {
       if (o.attractionsStatus) return route.fulfill({ status: o.attractionsStatus, body: '{}' });
-      return json({ data: { items: list }, pagination: { page: 1, page_size: 100, total_items: list.length, total_pages: 1 } });
+      const language = u.searchParams.get('language') || 'vi';
+      const localized = list.map(item => {
+        return localizedAttraction(item, language);
+      });
+      return json({ data: { items: localized }, pagination: { page: 1, page_size: 100, total_items: list.length, total_pages: 1 } });
     }
     let m = u.pathname.match(/^\/api\/v1\/attractions\/(\d+)$/);
     if (m) {
-      const a = list[+m[1] - 1]; if (!a) return route.fulfill({ status: 404, body: '{}' });
-      return json({ data: { ...a, fallback_used: false, media: o.noImages ? [] : [
+      const item = list[+m[1] - 1];
+      if (!item) {
+        return route.fulfill({ status: 404, body: '{}' });
+      }
+      const a = localizedAttraction(item, u.searchParams.get('language') || 'vi');
+      return json({ data: { ...a, fallback_used: a.fallback_used ?? false, media: o.noImages ? [] : [
         { id: 100 + a.id, type: 'image', url: `${base}/media-mock/${a.id}.svg`, caption: 'Ảnh minh họa ' + a.name, display_order: 1 },
         { id: 200 + a.id, type: 'image', url: `${base}/media-mock/${a.id + 1}.svg`, caption: '', display_order: 2 }] } });
     }
@@ -91,7 +113,7 @@ async function open(browser, port, o = {}) {
     if (u.pathname === '/api/v1/location-suggestions') return json({ data: [], meta: {} });
     return json({ data: [], pagination: { total_pages: 1 } });
   });
-  await page.route(/open-meteo|unpkg\.com|cdn\.|openstreetmap\.org\/.*\.png|tile\./, r => r.abort());
+  await page.route(/open-meteo|unpkg\.com|cdn\.|openstreetmap\.org\/export\/embed|openstreetmap\.org\/.*\.png|tile\./, r => r.abort());
   await page.goto(`${base}/#${o.hash || 'home'}`);
   await page.waitForSelector('#content *', { timeout: 15000 });
   return { ctx, page, consoleErrors, pageErrors, requests, events, list, base };

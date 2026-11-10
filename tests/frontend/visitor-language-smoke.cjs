@@ -4,6 +4,15 @@
 const assert = require('node:assert/strict');
 const pw = require('playwright');
 const { startServer, open, makeRunner } = require('./_support/visitor-harness.cjs');
+const dictionary = require('../../frontend/hue-i18n-dict.js');
+const attractionTranslations = {
+  en: {
+    1: {
+      name: 'English heritage fixture',
+      description: 'Published English description for the language smoke test.'
+    }
+  }
+};
 const bi = process.argv.indexOf('--browser'); const which = bi > 0 ? process.argv[bi + 1] : 'chromium';
 const LAUNCH = { chromium: () => pw.chromium.launch(), chrome: () => pw.chromium.launch({ channel: 'chrome' }), edge: () => pw.chromium.launch({ channel: 'msedge' }), firefox: () => pw.firefox.launch() };
 const EXPECT = { en: 'Map', zh: '地图', ja: '地図', ko: '지도', fr: 'Carte', de: 'Karte' };
@@ -34,36 +43,105 @@ const navTexts = page => page.$$eval('#nav button', l => l.map(b => b.innerText.
       assert.ok((await navTexts(page)).includes(mapLabel), code);
       const ph = await page.getAttribute('#global-search', 'placeholder');
       assert.ok(ph && !/Tìm một câu chuyện/.test(ph), `placeholder chưa đổi ở ${code}`);
-      assert.ok(!/Tổng quan|Một góc nhìn/.test(await page.innerText('#content')), `tiêu đề trang chủ còn tiếng Việt ở ${code}`);
+      await page.waitForSelector('.dash-categories');
+      await page.waitForFunction(() => {
+        return !/Tổng quan|Một góc nhìn/.test(document.querySelector('#content').innerText);
+      });
     }
     assert.equal(await page.evaluate(() => document.documentElement.lang), 'de');
     assert.equal(pageErrors.length, 0);
     await ctx.close();
   });
 
-  await t.check('Trang tải lại giữ ngôn ngữ đã chọn (localStorage); quay về vi hoạt động', async () => {
-    const { ctx, page } = await open(browser, port, { hash: 'home', attractions: 3 });
-    await page.selectOption('#lang-select', 'fr');
-    await page.waitForFunction(() => document.querySelector('#nav').innerText.includes('Carte'));
-    await page.reload();
-    await page.waitForFunction(() => document.querySelector('#nav') && document.querySelector('#nav').innerText.includes('Carte'));
-    assert.equal(await page.inputValue('#lang-select'), 'fr');
-    await page.selectOption('#lang-select', 'vi');
-    await page.waitForFunction(() => document.querySelector('#nav').innerText.includes('Bản đồ'));
-    assert.ok(!(await page.innerText('#nav')).includes('Carte'));
-    await ctx.close();
+  await t.check('Reload giữ en, html lang=en và request danh sách đầu tiên language=en', async () => {
+    const { ctx, page, requests } = await open(browser, port, {
+      hash: 'explore',
+      attractions: 3,
+      attractionTranslations
+    });
+    try {
+      await page.selectOption('#lang-select', 'en');
+      await page.getByRole('heading', { name: attractionTranslations.en[1].name, exact: true }).waitFor();
+      requests.length = 0;
+      await page.reload();
+      await page.getByRole('heading', { name: attractionTranslations.en[1].name, exact: true }).waitFor();
+      assert.equal(await page.inputValue('#lang-select'), 'en');
+      assert.equal(await page.getAttribute('html', 'lang'), 'en');
+      const firstList = requests.find(request => {
+        return request.startsWith('/api/v1/attractions?');
+      });
+      assert.ok(firstList, 'Không ghi nhận request danh sách sau reload');
+      assert.equal(new URL(firstList, 'http://fixture.invalid').searchParams.get('language'), 'en');
+      await page.selectOption('#lang-select', 'vi');
+      await page.getByRole('heading', { name: 'Đại Nội Huế', exact: true }).waitFor();
+      assert.equal(await page.getAttribute('html', 'lang'), 'vi');
+    } finally {
+      await ctx.close();
+    }
   });
 
-  await t.check('Chuyển trang khi đang ở en: nhãn trang mới vẫn dịch; tên di tích/dữ liệu API KHÔNG bị đổi', async () => {
-    const { ctx, page } = await open(browser, port, { hash: 'home', attractions: 3 });
-    await page.selectOption('#lang-select', 'en');
-    await page.click('#nav button:has-text("Explore Heritage Sites")');
-    await page.waitForSelector('.hue-explorer-card h2');
-    assert.ok((await page.innerText('#content')).includes('Explore heritage sites.'));
-    const names = await page.$$eval('.hue-explorer-card h2', l => l.map(h => h.textContent.trim()));
-    assert.ok(names.every(n => /[À-ỹ]|Đại Nội|Chùa|Lăng/.test(n)), 'tên di tích bị đổi: ' + names);
-    assert.ok((await page.innerText('.hue-explorer-card p')).includes('Mô tả thử nghiệm'), 'mô tả từ API bị đổi');
-    await ctx.close();
+  await t.check('vi → en: list/detail dùng language=en, chi tiết tiếng Anh và fallback tiếng Việt', async () => {
+    const { ctx, page, requests, list, pageErrors } = await open(browser, port, {
+      hash: 'explore',
+      attractions: 3,
+      attractionTranslations
+    });
+    try {
+      await page.getByRole('heading', { name: list[0].name, exact: true }).waitFor();
+      await page.selectOption('#lang-select', 'en');
+      await page.getByRole('heading', { name: attractionTranslations.en[1].name, exact: true }).waitFor();
+      assert.ok(requests.some(request => {
+        return request.startsWith('/api/v1/attractions?language=en&');
+      }));
+      assert.ok(requests.includes('/api/v1/attractions/1?language=en'));
+      assert.ok(requests.includes('/api/v1/attractions/2?language=en'));
+      await page.locator('#content [data-detail="di-tich-01"]').click();
+      const detail = page.locator('#modal .hue-heritage-detail');
+      await detail.getByRole('heading', { name: attractionTranslations.en[1].name, exact: true }).waitFor();
+      assert.equal(await detail.locator('.hue-detail-intro').innerText(), attractionTranslations.en[1].description);
+      assert.equal(await detail.getByRole('status').count(), 0);
+      await page.locator('#close-modal').click();
+      await page.locator('#content [data-detail="di-tich-02"]').click();
+      await detail.getByRole('heading', { name: list[1].name, exact: true }).waitFor();
+      assert.equal(await detail.locator('.hue-detail-intro').innerText(), list[1].description);
+      await detail.getByRole('status').filter({ hasText: 'tiếng Việt dự phòng' }).waitFor();
+      assert.equal(pageErrors.length, 0);
+    } finally {
+      await ctx.close();
+    }
+  });
+
+  await t.check('Chat: en → de → vi cập nhật thông báo và giữ nguyên câu hỏi nháp', async () => {
+    const { ctx, page } = await open(browser, port, { hash: 'chat', attractions: 3 });
+    try {
+      await page.selectOption('#lang-select', 'en');
+      const notice = page.locator('#chat-language-notice');
+      await notice.waitFor({ state: 'hidden' });
+      const draft = 'Câu hỏi nháp LANG12 chưa gửi';
+      await page.locator('#chat-input').fill(draft);
+      await page.selectOption('#lang-select', 'de');
+      await notice.waitFor({ state: 'visible' });
+      await page.waitForFunction(expected => {
+        return document.querySelector('#chat-language-notice')?.textContent === expected;
+      }, dictionary.de['chat.languageLimit']);
+      assert.equal(await page.inputValue('#chat-input'), draft);
+      await page.selectOption('#lang-select', 'vi');
+      await notice.waitFor({ state: 'hidden' });
+      assert.equal(await page.inputValue('#chat-input'), draft);
+    } finally {
+      await ctx.close();
+    }
+  });
+
+  await t.check('Nhãn nút và trạng thái trống Visitor được dịch sang tiếng Anh', async () => {
+    const { ctx, page } = await open(browser, port, { hash: 'routes', attractions: 3, routes: 0 });
+    try {
+      await page.selectOption('#lang-select', 'en');
+      await page.locator('#nav').getByRole('button', { name: dictionary.en['nav.chat'], exact: true }).waitFor();
+      await page.getByRole('heading', { name: dictionary.en['empty.routes'], exact: true }).waitFor();
+    } finally {
+      await ctx.close();
+    }
   });
 
   await t.check('localStorage bị chặn: trang vẫn chạy, đổi ngôn ngữ vẫn có tác dụng trong phiên', async () => {
