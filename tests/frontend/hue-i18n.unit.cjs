@@ -35,15 +35,70 @@ test('mặc định vi khi chưa lưu', () => {
   assert.equal(i.getCurrentLanguage(), 'vi');
 });
 
-test('setCurrentLanguage lưu vào localStorage, init lại đọc được, đặt <html lang>', () => {
-  const st = memStorage(), doc = fakeDoc();
-  const a = I18n.create({ dict, storage: st, doc }); a.init();
-  assert.equal(a.setCurrentLanguage('ja'), true);
-  assert.equal(st._m[I18n.STORAGE_KEY], 'ja');
-  assert.equal(doc.documentElement.getAttribute('lang'), 'ja');
-  const b = I18n.create({ dict, storage: st, doc: fakeDoc() }); b.init();
-  assert.equal(b.getCurrentLanguage(), 'ja');
-  a.setCurrentLanguage('zh'); assert.equal(doc.documentElement.getAttribute('lang'), 'zh-CN');
+test('lưu và khôi phục đủ 7 ngôn ngữ cùng <html lang>, zh dùng zh-CN', () => {
+  for (const code of CODES) {
+    const storage = memStorage();
+    const doc = fakeDoc();
+    const expectedHtmlLang = code === 'zh' ? 'zh-CN' : code;
+    const current = I18n.create({ dict, storage, doc });
+    current.init();
+
+    assert.equal(current.setCurrentLanguage(code), true, code);
+    assert.equal(current.getCurrentLanguage(), code);
+    assert.equal(storage.getItem(I18n.STORAGE_KEY), code);
+    assert.equal(doc.documentElement.getAttribute('lang'), expectedHtmlLang);
+
+    const restoredDoc = fakeDoc();
+    const restored = I18n.create({ dict, storage, doc: restoredDoc });
+    assert.equal(restored.init(), code);
+    assert.equal(restored.getCurrentLanguage(), code);
+    assert.equal(restoredDoc.documentElement.getAttribute('lang'), expectedHtmlLang);
+  }
+});
+
+test('mã không hợp lệ giữ lựa chọn, storage và <html lang> đã lưu', () => {
+  const storage = memStorage({ [I18n.STORAGE_KEY]: 'zh' });
+  const doc = fakeDoc();
+  const i = I18n.create({ dict, storage, doc });
+  i.init();
+
+  for (const invalid of ['xx', '', 'en-US', null, undefined, 7, {}]) {
+    assert.equal(i.setCurrentLanguage(invalid), false);
+    assert.equal(i.getCurrentLanguage(), 'zh');
+    assert.equal(storage.getItem(I18n.STORAGE_KEY), 'zh');
+    assert.equal(doc.documentElement.getAttribute('lang'), 'zh-CN');
+  }
+});
+
+test('hue:languagechange chỉ phát một lần mỗi lần đổi mã, có detail.language đúng', () => {
+  const doc = new EventTarget();
+  doc.documentElement = fakeDoc().documentElement;
+  const events = [];
+  doc.addEventListener('hue:languagechange', event => {
+    events.push(event);
+  });
+  const storage = memStorage({ [I18n.STORAGE_KEY]: 'en' });
+  const i = I18n.create({ dict, storage, doc, win: { CustomEvent } });
+  assert.equal(events.length, 0);
+  assert.equal(i.init(), 'en');
+  assert.equal(events.length, 0);
+  assert.equal(i.setCurrentLanguage('en'), true);
+  assert.equal(i.setCurrentLanguage('xx'), false);
+  assert.equal(events.length, 0);
+
+  assert.equal(i.setCurrentLanguage('zh'), true);
+  assert.equal(events.length, 1);
+  assert.ok(events[0] instanceof CustomEvent);
+  assert.equal(events[0].type, 'hue:languagechange');
+  assert.deepEqual(events[0].detail, { language: 'zh' });
+  assert.equal(events[0].target, doc);
+  assert.equal(i.setCurrentLanguage('zh'), true);
+  assert.equal(i.setCurrentLanguage(null), false);
+  assert.equal(events.length, 1);
+
+  assert.equal(i.setCurrentLanguage('vi'), true);
+  assert.equal(events.length, 2);
+  assert.deepEqual(events[1].detail, { language: 'vi' });
 });
 
 test('mã không hỗ trợ / giá trị lưu hỏng → bỏ qua, về vi', () => {
@@ -65,11 +120,16 @@ test('localStorage ném lỗi (chế độ riêng tư): không crash, vẫn đ�
 });
 
 test('translate: đúng ngôn ngữ; thiếu bản dịch → tiếng Việt; thiếu hẳn → trả khóa', () => {
-  const small = { vi: { a: 'Một', b: 'Hai' }, en: { a: 'One' } };
-  const i = I18n.create({ dict: small, storage: memStorage(), doc: fakeDoc() }); i.init();
+  const small = {
+    vi: { a: 'Một', b: 'Hai', c: 'Ba' },
+    en: { a: 'One', c: '' }
+  };
+  const i = I18n.create({ dict: small, storage: memStorage(), doc: fakeDoc() });
+  i.init();
   i.setCurrentLanguage('en');
   assert.equal(i.translate('a'), 'One');
   assert.equal(i.translate('b'), 'Hai');
+  assert.equal(i.translate('c'), 'Ba');
   assert.equal(i.translate('zzz'), 'zzz');
   assert.equal(i.translate('a', 'vi'), 'Một');
   i.setCurrentLanguage('de'); assert.equal(i.translate('a'), 'Một');
