@@ -1,0 +1,136 @@
+{
+  "timestamp": "2026-11-10T12:02:18.678Z",
+  "commit": "89046bffb5a99e70de89c2662e56bc1b4a191810",
+  "browser": "Installed Windows Chrome",
+  "browserVersion": "157.0.8103.39",
+  "playwrightVersion": "1.65.0",
+  "mode": "API mock, synthetic fixtures, viewport emulation; no audible TTS or physical-device verification",
+  "results": [
+    {
+      "name": "language-vi-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-vi-1366.png"
+      ]
+    },
+    {
+      "name": "language-en-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-en-1366.png"
+      ]
+    },
+    {
+      "name": "language-zh-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-zh-1366.png"
+      ]
+    },
+    {
+      "name": "language-ja-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-ja-1366.png"
+      ]
+    },
+    {
+      "name": "language-ko-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-ko-1366.png"
+      ]
+    },
+    {
+      "name": "language-fr-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-fr-1366.png"
+      ]
+    },
+    {
+      "name": "language-de-1366",
+      "status": "PASS",
+      "pictures": [
+        "language-de-1366.png"
+      ]
+    },
+    {
+      "name": "detail-en",
+      "status": "PASS",
+      "pictures": [
+        "detail-en.png"
+      ]
+    },
+    {
+      "name": "detail-vi-fallback",
+      "status": "PASS",
+      "pictures": [
+        "detail-vi-fallback.png"
+      ]
+    },
+    {
+      "name": "reload-en",
+      "status": "PASS",
+      "pictures": [
+        "reload-en.png"
+      ]
+    },
+    {
+      "name": "chat-draft",
+      "status": "PASS",
+      "pictures": [
+        "chat-draft-de-notice.png",
+        "chat-draft-vi-hidden.png"
+      ]
+    },
+    {
+      "name": "audio-en-content",
+      "status": "FAIL",
+      "error": "locator.waitFor: Timeout 12000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.transcript').filter({ hasText: 'Published English description for LANG14 evidence.' }) to be visible\u001b[22m\n",
+      "pictures": []
+    },
+    {
+      "name": "audio-ja-fallback-disabled",
+      "status": "PASS",
+      "pictures": [
+        "audio-ja-fallback-disabled.png"
+      ]
+    },
+    {
+      "name": "routes-empty-en",
+      "status": "PASS",
+      "pictures": [
+        "routes-empty-en.png"
+      ]
+    },
+    {
+      "name": "explore-error-en",
+      "status": "PASS",
+      "pictures": [
+        "explore-error-en.png"
+      ]
+    },
+    {
+      "name": "responsive-de-390",
+      "status": "PASS",
+      "pictures": [
+        "responsive-de-390.png"
+      ]
+    },
+    {
+      "name": "responsive-fr-390",
+      "status": "PASS",
+      "pictures": [
+        "responsive-fr-390.png"
+      ]
+    },
+    {
+      "name": "responsive-ja-390",
+      "status": "PASS",
+      "pictures": [
+        "responsive-ja-390.png"
+      ]
+    }
+  ]
+}

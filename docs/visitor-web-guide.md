@@ -2,6 +2,10 @@
 
 Dành cho khách tham quan và người demo. Chỉ mô tả chức năng đang có; nội dung (di tích, tuyến) lấy từ dữ liệu **đã xuất bản** của hệ thống.
 
+Xem [hướng dẫn chọn ngôn ngữ và phạm vi hỗ trợ](visitor-language.md) và
+[báo cáo QA LANG14](visitor-language-qa.md). Ảnh trong báo cáo QA dùng API giả lập,
+không thay thế ảnh dữ liệu thật trong checklist bên dưới.
+
 ## 1. Mở trang
 Mở địa chỉ Visitor Web (trang `index.html`). Lần đầu có màn hình chào; bấm để vào. Dùng tốt trên Chrome, Edge, Firefox (máy tính) và trình duyệt điện thoại.
 
@@ -13,7 +17,7 @@ Mở địa chỉ Visitor Web (trang `index.html`). Lần đầu có màn hình 
 | Bản đồ | Xem vị trí di tích; mở Google Maps / OpenStreetMap |
 | Tuyến tham quan | Chọn tuyến, xem điểm dừng theo thứ tự, mở dẫn đường |
 | Thuyết minh | Nghe/đọc thuyết minh theo ngôn ngữ (nếu có nội dung đã xuất bản) |
-| Hỏi đáp di sản | Hỏi trợ lý về di tích (tiếng Việt/Anh) |
+| Hỏi đáp di sản | Hỏi trợ lý về di tích; Visitor hiện gửi mã vi, dù Chat API hỗ trợ vi/en |
 | Điểm đến nổi bật | Danh sách điểm được xem nhiều |
 | Thời tiết Huế | Dự báo thời tiết |
 

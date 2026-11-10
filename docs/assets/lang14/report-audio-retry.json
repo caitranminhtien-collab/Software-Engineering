@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-11-10T12:02:32.181Z",
+  "commit": "89046bffb5a99e70de89c2662e56bc1b4a191810",
+  "browser": "Installed Windows Chrome",
+  "browserVersion": "157.0.8103.39",
+  "playwrightVersion": "1.65.0",
+  "mode": "API mock, synthetic fixtures, viewport emulation; no audible TTS or physical-device verification",
+  "results": [
+    {
+      "name": "audio-en-content",
+      "status": "PASS",
+      "pictures": [
+        "audio-en-content.png"
+      ]
+    }
+  ]
+}
