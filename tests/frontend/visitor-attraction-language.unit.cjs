@@ -19,6 +19,14 @@ const refresh = source.slice(
   source.indexOf('function refreshVisitorAttractionDetail()'),
   source.indexOf('function detail(id, recordView = true)')
 );
+const narration = source.slice(
+  source.indexOf('const narrationLocales = ['),
+  source.indexOf('if (!narrationLocales.some(')
+);
+const initialization = source.slice(
+  source.indexOf('syncVisitorNarrationLanguage();'),
+  source.indexOf('// The ten curated slugs')
+);
 
 function setup(savedLanguage = 'vi', responder) {
   const document = new EventTarget();
@@ -33,7 +41,8 @@ function setup(savedLanguage = 'vi', responder) {
     trackId: 'second',
     mapId: 'second',
     page: 'explore',
-    playing: false
+    playing: false,
+    audioLanguage: 'vi-VN'
   };
   const api = I18n.create({
     storage: {
@@ -63,9 +72,6 @@ function setup(savedLanguage = 'vi', responder) {
     },
     render() {
       renders.push(places.map(place => place.name));
-    },
-    narrationLanguage() {
-      return 'vi';
     },
     apiItems(payload) {
       return payload.data;
@@ -109,7 +115,7 @@ function setup(savedLanguage = 'vi', responder) {
     },
     console
   });
-  vm.runInContext(loader + refresh, context);
+  vm.runInContext(narration + loader + refresh + initialization, context);
   return { api, context, places, calls, displayed, renders, modal, detailElement, state };
 }
 
@@ -240,11 +246,8 @@ function installPlayback(run) {
     byId(id) {
       return run.places.find(place => place.id === id);
     },
-    publishedNarration(place) {
-      return place.localizedNarrations.vi;
-    },
     hueTtsSelectedVoice() {
-      return { lang: 'vi-VN' };
+      return { lang: run.state.audioLanguage };
     },
     hueTtsPrefs: { rate: 0.9 },
     hueGpsTour: {},
@@ -257,7 +260,6 @@ function installPlayback(run) {
     timer: null,
     audioStarted: 0
   });
-  run.state.audioLanguage = 'vi-VN';
   run.context.document.querySelectorAll = () => [];
   vm.runInContext(source.slice(
     source.indexOf('function playAudio()'),
@@ -269,6 +271,84 @@ function installPlayback(run) {
   ), run.context);
   return { synth, spoken };
 }
+
+test('LANG09: persisted Visitor en initializes the actual narration locale to en-US', () => {
+  const run = setup('en');
+  assert.equal(run.state.audioLanguage, 'en-US');
+  assert.equal(run.context.narrationLanguage(), 'en');
+});
+
+test('LANG09: English narration completes during Vietnamese speech without rendering or interrupting it', async () => {
+  let englishDetailRequests = 0;
+  let releaseNarration;
+  const pendingNarration = new Promise(resolve => {
+    releaseNarration = resolve;
+  });
+  const run = setup('vi', async url => {
+    if (url.pathname === '/api/v1/attractions/2'
+        && url.searchParams.get('language') === 'en') {
+      englishDetailRequests++;
+      if (englishDetailRequests === 2) {
+        await pendingNarration;
+      }
+    }
+  });
+  await run.context.loadAttractionsFromBackend();
+  const { synth, spoken } = installPlayback(run);
+  run.state.page = 'audio';
+  run.context.playAudio();
+  const vietnameseUtterance = run.state.utterance;
+  const renderCount = run.renders.length;
+  run.api.setCurrentLanguage('en');
+  await settle(run);
+  const selected = run.places.find(place => place.id === 'second');
+  assert.equal(selected.narrationRequests.en, 'loading');
+  releaseNarration();
+  for (let attempt = 0; attempt < 100 && selected.narrationRequests.en === 'loading'; attempt++) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  assert.equal(selected.narrationRequests.en, 'ready');
+  assert.equal(selected.localizedNarrations.en.description, 'en-description-second');
+  assert.equal(run.state.audioLanguage, 'en-US');
+  assert.equal(run.state.playing, true);
+  assert.equal(run.state.utterance, vietnameseUtterance);
+  assert.equal(vietnameseUtterance.lang, 'vi-VN');
+  assert.equal(vietnameseUtterance.text, 'vi-description-second');
+  assert.equal(run.renders.length, renderCount);
+  assert.equal(synth.cancelCalls, 1);
+  assert.equal(spoken.length, 1);
+  vietnameseUtterance.onend();
+  assert.equal(run.renders.length, renderCount + 1);
+  assert.equal(run.displayed.at(-1).id, 'second');
+  run.context.playAudio();
+  assert.equal(spoken.length, 2);
+  assert.equal(spoken[1].lang, 'en-US');
+  assert.equal(spoken[1].text, 'en-description-second');
+  assert.equal(spoken[1].voice.lang, 'en-US');
+});
+
+test('LANG09: real narration selection rejects Vietnamese fallback for a foreign voice', async () => {
+  const run = setup('fr');
+  await run.context.loadAttractionsFromBackend();
+  const selected = run.places.find(place => place.id === 'second');
+  await run.context.ensureNarration(selected);
+  // The loader may have already started this request; let its continuation finish.
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(run.state.audioLanguage, 'fr-FR');
+  assert.equal(selected.narrationRequests.fr, 'unavailable');
+  assert.equal(run.context.publishedNarration(selected), null);
+  assert.equal(selected.localizedNarrations.vi.description, 'vi-description-second');
+  const { spoken } = installPlayback(run);
+  const messages = [];
+  run.context.toast = message => {
+    messages.push(message);
+  };
+  run.state.page = 'audio';
+  run.context.playAudio();
+  assert.equal(spoken.length, 0);
+  assert.equal(run.state.playing, false);
+  assert.equal(messages.length, 1);
+});
 
 for (const page of ['audio', 'explore']) {
   test(`LANG08: language reload preserves speech and renders latest content on end (${page})`, async () => {

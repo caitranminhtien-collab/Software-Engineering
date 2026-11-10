@@ -60,13 +60,35 @@ async function ensureNarration(p, locale = state.audioLanguage) {
     console.warn('[Narration] Không tải được bản dịch:', code, error);
     p.narrationRequests[code] = 'error';
   } finally {
-    if (!IS_ADMIN && state.page === 'audio' && state.trackId === p.id && narrationLanguage() === code) render();
+    if (!IS_ADMIN && state.page === 'audio'
+        && state.trackId === p.id && narrationLanguage() === code) {
+      if (state.playing) {
+        visitorContentRenderPending = true;
+      } else {
+        render();
+      }
+    }
   }
 }
 if (!narrationLocales.some(([locale]) => locale === state.audioLanguage)) state.audioLanguage = 'vi-VN';
 const byId=id=>places.find(p=>p.id===id)||places[0];
 const $=q=>document.querySelector(q);
 const IS_ADMIN=document.body.dataset.area==='admin';
+syncVisitorNarrationLanguage();
+
+function syncVisitorNarrationLanguage() {
+  if (IS_ADMIN || !window.HueI18n) {
+    return;
+  }
+  const language = visitorContentLanguage();
+  const narrationLocale = narrationLocales.find(([, , code]) => {
+    return code === language;
+  });
+
+  if (narrationLocale) {
+    state.audioLanguage = narrationLocale[0];
+  }
+}
 // The ten curated slugs are a presentation whitelist, not a second database.
 // Published coordinates and names are loaded from PostgreSQL through the public API.
 const attractionApi = { status: 'loading', message: 'Đang tải các điểm tham quan…', staffStatus: 'loading', staffRows: [] };
@@ -469,6 +491,7 @@ document.addEventListener('hue:languagechange', () => {
   if (IS_ADMIN) {
     return;
   }
+  syncVisitorNarrationLanguage();
   attractionApi.status = 'loading';
   const openDetail = document.querySelector('#modal .hue-heritage-detail');
   if (openDetail) {
