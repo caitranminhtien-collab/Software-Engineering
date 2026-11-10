@@ -478,6 +478,26 @@ function visitorContentLanguage() {
   return 'vi';
 }
 
+function visitorChatLanguageNotice() {
+  const language = visitorContentLanguage();
+  const hidden = language === 'vi' || language === 'en';
+  const message = window.HueI18n?.translate('chat.languageLimit') || '';
+  return `<p id="chat-language-notice" class="notice" role="status" data-i18n="chat.languageLimit" ${hidden ? 'hidden' : ''}>${esc(message)}</p>`;
+}
+
+function updateVisitorChatLanguageNotice() {
+  if (IS_ADMIN || state.page !== 'chat' || !window.HueI18n) {
+    return;
+  }
+  const notice = document.querySelector('#chat-language-notice');
+  if (!notice) {
+    return;
+  }
+  const language = visitorContentLanguage();
+  notice.hidden = language === 'vi' || language === 'en';
+  notice.textContent = window.HueI18n.translate('chat.languageLimit');
+}
+
 function attractionLanguageNotice(metadata) {
   if (metadata?.requested_language !== 'vi'
       && metadata?.content_language === 'vi'
@@ -492,6 +512,7 @@ document.addEventListener('hue:languagechange', () => {
     return;
   }
   syncVisitorNarrationLanguage();
+  updateVisitorChatLanguageNotice();
   attractionApi.status = 'loading';
   const openDetail = document.querySelector('#modal .hue-heritage-detail');
   if (openDetail) {
@@ -1179,7 +1200,7 @@ function renderAudio() {
       </article>
       <div class="audio-library">${places.map(item=>`<button class="track ${item.id===state.trackId?'active':''}" data-track="${esc(item.id)}">${icon('headphones')}<span><strong>${esc(item.name)}</strong><small>Thuyết minh bằng văn bản đã xuất bản</small></span></button>`).join('')}</div></div></div>`;
 }
-function renderChat(){return `${header('Bạn hỏi, di sản trả lời.','Hỏi đáp bằng Gemini dựa trên tài liệu Knowledge đã được phê duyệt.')}<div class="chat-layout"><aside class="glass chat-sidebar"><h2>Bắt đầu một câu chuyện</h2>${['Đại Nội Huế có gì đặc biệt?','Lăng Tự Đức có lịch sử như thế nào?','Đàn Nam Giao có ý nghĩa gì?','Hãy giới thiệu Cung An Định'].map(v=>`<button class="chat-topic" data-question="${esc(v)}">${esc(v)}</button>`).join('')}<button class="text-button" id="clear-chat">${icon('trash')} Hội thoại mới</button><div class="notice">Chatbot kết nối Gemini/RAG thật. Khi chưa có tài liệu Knowledge được phê duyệt cho 10 di tích mới, chatbot sẽ báo không đủ thông tin. Nguồn chỉ xuất hiện khi có câu trả lời được hỗ trợ.</div></aside><article class="glass chat-panel"><div class="chat-header"><div class="avatar">${icon('compass')}</div><div><strong>Trợ lý di sản Huế</strong><small>Gemini / Knowledge đã phê duyệt · Trích dẫn nguồn khi có</small></div></div><div class="messages" id="messages" aria-live="polite">${chatMessages()}</div><form class="chat-form" id="chat-form"><input id="chat-input" placeholder="Bạn muốn tìm hiểu điều gì về Huế?" aria-label="Câu hỏi về di sản" maxlength="1000" required autocomplete="off" ${state.chatBusy?'disabled':''}><button class="icon-button dark" aria-label="Gửi câu hỏi" ${state.chatBusy?'disabled':''}>${icon('send')}</button></form></article></div>`}
+function renderChat(){return `${header('Bạn hỏi, di sản trả lời.','Hỏi đáp bằng Gemini dựa trên tài liệu Knowledge đã được phê duyệt.')}${visitorChatLanguageNotice()}<div class="chat-layout"><aside class="glass chat-sidebar"><h2>Bắt đầu một câu chuyện</h2>${['Đại Nội Huế có gì đặc biệt?','Lăng Tự Đức có lịch sử như thế nào?','Đàn Nam Giao có ý nghĩa gì?','Hãy giới thiệu Cung An Định'].map(v=>`<button class="chat-topic" data-question="${esc(v)}">${esc(v)}</button>`).join('')}<button class="text-button" id="clear-chat">${icon('trash')} Hội thoại mới</button><div class="notice">Chatbot kết nối Gemini/RAG thật. Khi chưa có tài liệu Knowledge được phê duyệt cho 10 di tích mới, chatbot sẽ báo không đủ thông tin. Nguồn chỉ xuất hiện khi có câu trả lời được hỗ trợ.</div></aside><article class="glass chat-panel"><div class="chat-header"><div class="avatar">${icon('compass')}</div><div><strong>Trợ lý di sản Huế</strong><small>Gemini / Knowledge đã phê duyệt · Trích dẫn nguồn khi có</small></div></div><div class="messages" id="messages" aria-live="polite">${chatMessages()}</div><form class="chat-form" id="chat-form"><input id="chat-input" placeholder="Bạn muốn tìm hiểu điều gì về Huế?" aria-label="Câu hỏi về di sản" maxlength="1000" required autocomplete="off" ${state.chatBusy?'disabled':''}><button class="icon-button dark" aria-label="Gửi câu hỏi" ${state.chatBusy?'disabled':''}>${icon('send')}</button></form></article></div>`}
 function chatMessages(){if(!state.chat.length&&!state.chatBusy)return `<div class="chat-welcome"><div class="audio-art">${icon('book')}</div><h2>Mỗi câu hỏi mở ra<br>một câu chuyện.</h2><p>Hãy hỏi về di tích tại Huế. Trợ lý chỉ trả lời khi có tài liệu được phê duyệt hỗ trợ.</p></div>`;return state.chat.map(m=>`<div class="message ${m.role==='user'?'user':''}">${esc(m.text)}${m.source?`<span class="source">${icon('book')} ${esc(m.source)}</span>`:''}</div>`).join('')+(state.chatBusy?'<div class="message" role="status">Đang tra cứu tài liệu và hỏi Gemini…</div>':'')}
 
 function renderAdminContent(){
