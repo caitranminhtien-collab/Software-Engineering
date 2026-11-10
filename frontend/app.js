@@ -424,15 +424,76 @@ async function selectPublishedRoute(value) {
   }
 }
 
+let attractionLoadVersion = 0;
+let visitorContentRenderPending = false;
+
+function renderVisitorAttractionContent() {
+  if (state.playing) {
+    visitorContentRenderPending = true;
+    return;
+  }
+  visitorContentRenderPending = false;
+  if (state.page !== 'chat') {
+    render();
+  }
+  if (attractionApi.status === 'ready') {
+    refreshVisitorAttractionDetail();
+  }
+}
+
+function flushVisitorAttractionContent() {
+  if (!visitorContentRenderPending || state.playing) {
+    return false;
+  }
+  renderVisitorAttractionContent();
+  return true;
+}
+
+function visitorContentLanguage() {
+  if (!IS_ADMIN && window.HueI18n) {
+    return window.HueI18n.getCurrentLanguage();
+  }
+  return 'vi';
+}
+
+function attractionLanguageNotice(metadata) {
+  if (metadata?.requested_language !== 'vi'
+      && metadata?.content_language === 'vi'
+      && metadata?.fallback_used === true) {
+    return '<p class="notice" role="status">Chưa có bản dịch cho ngôn ngữ đã chọn. Đang hiển thị nội dung tiếng Việt dự phòng.</p>';
+  }
+  return '';
+}
+
+document.addEventListener('hue:languagechange', () => {
+  if (IS_ADMIN) {
+    return;
+  }
+  attractionApi.status = 'loading';
+  const openDetail = document.querySelector('#modal .hue-heritage-detail');
+  if (openDetail) {
+    openDetail.innerHTML = '<p role="status">Đang tải nội dung theo ngôn ngữ đã chọn…</p>';
+  }
+  renderVisitorAttractionContent();
+  void loadAttractionsFromBackend();
+});
+
 async function loadAttractionsFromBackend() {
+  const version = ++attractionLoadVersion;
+  const language = visitorContentLanguage();
+  const isCurrent = () => version === attractionLoadVersion
+    && language === visitorContentLanguage();
   try {
     const records = [];
 
     // Lay tat ca trang di tich da xuat ban
     for (let page = 1; page <= 100; page++) {
       const payload = await fetchJson(
-        `/api/v1/attractions?language=vi&page=${page}&page_size=100`
+        `/api/v1/attractions?language=${encodeURIComponent(language)}&page=${page}&page_size=100`
       );
+      if (!isCurrent()) {
+        return;
+      }
 
       records.push(...apiItems(payload));
 
@@ -476,15 +537,34 @@ async function loadAttractionsFromBackend() {
       // do not include media; an existing attraction may receive new published images.
       try {
         const result = await fetchJson(
-          `/api/v1/attractions/${dbId}?language=vi`
+          `/api/v1/attractions/${dbId}?language=${encodeURIComponent(language)}`
         );
         detail = result?.data ?? null;
       } catch (error) {
         console.warn('Không tải được chi tiết/media công khai:', slug, error);
       }
 
+      if (!isCurrent()) {
+        return;
+      }
+      // Keep the existing narration/audio data independent of Visitor UI language.
+      let vietnameseDetail = detail;
+      if (language !== 'vi') {
+        vietnameseDetail = null;
+        try {
+          vietnameseDetail = (await fetchJson(
+            `/api/v1/attractions/${dbId}?language=vi`
+          ))?.data;
+        } catch (error) {
+          console.warn('Không tải được thuyết minh tiếng Việt:', slug);
+        }
+      }
+      if (!isCurrent()) {
+        return;
+      }
+
       const name = cleanApiText(
-        item.name || detail?.name || slug,
+        detail?.name || item.name || slug,
         255
       );
 
@@ -493,6 +573,16 @@ async function loadAttractionsFromBackend() {
         3000
       );
 
+      const previous = places.find(place => place.dbId === dbId && place.id === slug);
+      const localizedNarrations = { ...previous?.localizedNarrations };
+      if (vietnameseDetail?.description
+          && vietnameseDetail.content_language === 'vi') {
+        localizedNarrations.vi = {
+          name: cleanApiText(vietnameseDetail.name || slug, 255),
+          description: cleanApiText(vietnameseDetail.description, 3000)
+        };
+      }
+
       next.push({
         id: slug,
         dbId,
@@ -500,18 +590,21 @@ async function loadAttractionsFromBackend() {
         type: cleanApiText(item.category || detail?.category || 'Di tích', 80),
         intro: description || 'Nội dung giới thiệu đang được cập nhật.',
         text: description || 'Chưa có nội dung thuyết minh công khai.',
-        localizedNarrations: {vi: {name, description: description || 'Chưa có nội dung thuyết minh.'}},
+        localizedNarrations,
         narrationRequests: {},
         en: 'Explore a published Hue heritage attraction.',
         // Only backend-published images returned by the visitor API.
         publishedImages: publishedImageMedia(detail?.media),
-        publishedAudios: publishedAudioMedia(detail?.media),
+        publishedAudios: vietnameseDetail
+          ? publishedAudioMedia(vietnameseDetail.media)
+          : previous?.publishedAudios || [],
         englishAudioChecked: false,
         englishAudioPending: false,
         latitude,
         longitude,
+        languageNotice: attractionLanguageNotice(detail || item),
         contentLanguage: cleanApiText(
-          item.content_language ?? 'vi',
+          detail?.content_language ?? item.content_language ?? 'vi',
           10
         )
       });
@@ -540,17 +633,20 @@ async function loadAttractionsFromBackend() {
       state.mapId = places[0].id;
     }
 
-    if (state.page !== 'chat' && !state.playing) {
-      render();
-    }
+    renderVisitorAttractionContent();
   } catch (error) {
+    if (!isCurrent()) {
+      return;
+    }
     attractionApi.status = 'error';
     attractionApi.message =
       'Không thể tải danh sách di tích. Vui lòng thử lại.';
-
-    if (state.page !== 'chat' && !state.playing) {
-      render();
+    const openDetail = document.querySelector('#modal .hue-heritage-detail');
+    if (openDetail) {
+      openDetail.innerHTML = '<p role="alert">Không tải được nội dung theo ngôn ngữ đã chọn. Hãy thử tải lại danh sách.</p>';
     }
+
+    renderVisitorAttractionContent();
   }
 }
 
@@ -1817,6 +1913,10 @@ function render(){
   huePublicRouteMap.destroy();
   const visitorNeedsAttractions=!IS_ADMIN && ['home','explore','popular','map','audio'].includes(state.page);
   content.innerHTML=visitorNeedsAttractions && attractionApi.status!=='ready'?huePublishedStatusPanel():pages[state.page]();
+  if (visitorNeedsAttractions && attractionApi.status === 'ready'
+      && places.some(place => place.languageNotice)) {
+    content.insertAdjacentHTML('afterbegin', places.find(place => place.languageNotice).languageNotice);
+  }
   if (state.page === 'map' && attractionApi.status === 'ready') {
     window.HueMap?.mount(places, state.mapId, state.location);
     window.HueMap?.showHistory(hueGpsHistory.points);
@@ -1830,10 +1930,22 @@ function render(){
   if (['home','weather'].includes(state.page)) loadWeather();
 }
 
-function detail(id) {
+function refreshVisitorAttractionDetail() {
+  if (!IS_ADMIN && !$('#modal').hidden
+      && document.querySelector('#modal .hue-heritage-detail')) {
+    const id = heritageGalleryState.slug;
+    if (places.some(item => item.id === id)) {
+      detail(id, false);
+    }
+  }
+}
+
+function detail(id, recordView = true) {
   const p = places.find(item => item.id === id);
   if (!p) { toast('Không tìm thấy di tích được chọn.'); return; }
-  trackEvent('detail', id);
+  if (recordView) {
+    trackEvent('detail', id);
+  }
   if (!state.viewed.includes(id)) { state.viewed.push(id); write('hue-viewed', state.viewed); }
   state.recent = [id, ...state.recent.filter(x => x !== id)].slice(0, 5);
   write('hue-recent', state.recent);
@@ -1852,6 +1964,7 @@ function detail(id) {
   openModal(`<div class="hue-heritage-detail">
     <p class="eyebrow">KHÁM PHÁ DI SẢN · ${esc(p.type.toUpperCase())}</p>
     <h2>${esc(p.name)}</h2>
+    ${p.languageNotice || ''}
     <p class="hue-detail-intro">${esc(p.intro)}</p>
     ${heritageGalleryContent(p)}
     <p>${esc(p.text)}</p>
@@ -1871,7 +1984,7 @@ function detail(id) {
   document.querySelector('#modal .modal')?.classList.add('hue-heritage-modal');
   // Record an actual detail opening, not a demo slug or a homepage render.
   const attractionId = Number(p.dbId);
-  if (!IS_ADMIN && Number.isSafeInteger(attractionId) && attractionId > 0) {
+  if (recordView && !IS_ADMIN && Number.isSafeInteger(attractionId) && attractionId > 0) {
     void sendVisitorAnalyticsEvent({event_type:'attraction_view', attraction_id:attractionId});
   }
 }
@@ -1880,7 +1993,26 @@ function openModal(html){lastFocused=document.activeElement;$('#modal').innerHTM
 function closeModal(){if($('#modal').hidden)return;$('#modal').querySelectorAll('audio[data-hue-real-audio]').forEach(a=>a.pause());$('#modal').hidden=true;document.body.style.overflow='';lastFocused?.focus?.()}
 function edit(id){const p=byId(id),d=state.drafts[id]||{};openModal(`<p class="eyebrow">BIÊN TẬP NỘI DUNG · MÔ PHỎNG</p><h2>${p.name}</h2><form id="edit-form" data-id="${id}"><label for="edit-name">Tên di tích</label><input id="edit-name" name="name" value="${esc(d.name||p.name)}" maxlength="100" required><label for="edit-description">Nội dung giới thiệu</label><textarea id="edit-description" name="description" maxlength="4000" required>${esc(d.description||p.text)}</textarea><label for="edit-source">Nguồn tham khảo</label><input id="edit-source" name="source" value="${esc(d.source||'')}" placeholder="Tên tài liệu hoặc nguồn cần kiểm chứng" maxlength="300"><div class="modal-actions"><button class="button" type="submit" name="action" value="draft">Lưu bản nháp</button><button class="button outline" type="submit" name="action" value="review">Gửi duyệt</button></div><div class="notice">Gửi duyệt yêu cầu có nguồn tham khảo. Đây là trạng thái mô phỏng, không xuất bản nội dung ra máy chủ.</div></form>`)}
 function formatTime(s){return Math.floor(s/60).toString().padStart(2,'0')+':'+Math.floor(s%60).toString().padStart(2,'0')}
-function stopAudio(update=true){document.querySelectorAll('audio[data-hue-real-audio]').forEach(a=>a.pause());speechSynthesisSafe()?.cancel();clearInterval(timer);hueGpsTour.autoSpeaking=false;state.playing=false;state.paused=false;state.progress=0;state.elapsed=0;state.utterance=null;if(update){if(['audio','home'].includes(state.page))render();else updateDock()}}
+function stopAudio(update = true) {
+  document.querySelectorAll('audio[data-hue-real-audio]').forEach(audio => {
+    audio.pause();
+  });
+  speechSynthesisSafe()?.cancel();
+  clearInterval(timer);
+  hueGpsTour.autoSpeaking = false;
+  state.playing = false;
+  state.paused = false;
+  state.progress = 0;
+  state.elapsed = 0;
+  state.utterance = null;
+  if (update && !flushVisitorAttractionContent()) {
+    if (['audio', 'home'].includes(state.page)) {
+      render();
+    } else {
+      updateDock();
+    }
+  }
+}
 function speechSynthesisSafe(){return 'speechSynthesis'in window?window.speechSynthesis:null}
 // M4.0 Browser TTS Voice, Rate & GPS Opt-In
 // On-device preferences only. GPS and automatic narration remain separately opt-in.
@@ -2022,7 +2154,20 @@ function playAudio() {
     }
   };
   u.onboundary=e=>{state.progress=Math.min(100,(e.charIndex/Math.max(1,u.text.length))*100);const bar=$('#audio-progress');if(bar)bar.style.setProperty('--progress',state.progress+'%');};
-  u.onend=()=>{clearInterval(timer);hueGpsTour.autoSpeaking=false;state.playing=false;state.paused=false;state.progress=100;if(['home','audio'].includes(state.page))render();else updateDock();};
+  u.onend = () => {
+    clearInterval(timer);
+    hueGpsTour.autoSpeaking = false;
+    state.playing = false;
+    state.paused = false;
+    state.progress = 100;
+    if (!flushVisitorAttractionContent()) {
+      if (['home', 'audio'].includes(state.page)) {
+        render();
+      } else {
+        updateDock();
+      }
+    }
+  };
   u.onerror=e=>{if(['canceled','interrupted'].includes(e.error))return;stopAudio();toast(e.error==='not-allowed'?'Trình duyệt chặn tự phát. Hãy bấm Nghe để bắt đầu.':'Chưa phát được giọng đọc.');};
   if (!simulatedSpeech) trackEvent('audio',p.id,state.audioLanguage);
   synth.cancel(); // replace a previous voice preview instead of queuing behind it
