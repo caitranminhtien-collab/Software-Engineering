@@ -1223,17 +1223,15 @@
 
       <button class="button small" data-hue-admin-new>+ Thêm di tích</button></div>
 
-      <section class="glass table-wrap"><table><thead><tr><th>DI TÍCH</th><th>SLUG</th><th>TRẠNG THÁI</th><th>GPS THAM KHẢO</th><th>THAO TÁC</th></tr></thead>
+      <section class="glass table-wrap"><table><thead><tr><th>DI TÍCH</th><th>SLUG</th><th>TRẠNG THÁI</th><th>THAO TÁC</th></tr></thead>
 
       <tbody>${rows.map(row => {
 
         const displayName = rowName(row);
 
-        const lat = number(row.latitude),lon = number(row.longitude);
-
         return `<tr><td>${esc(displayName)}</td><td>${esc(row.slug)}</td><td><span class="status">${esc(statusLabels[row.status] || row.status)}</span></td>
 
-        <td>${lat!==null&&lon!==null?lat.toFixed(5)+', '+lon.toFixed(5):'—'}</td><td>${buttons(row)}</td></tr>`;
+        <td>${buttons(row)}</td></tr>`;
 
       }).join('')}</tbody></table>${rows.length?'':`<div class="empty">${attractionApi.staffStatus==='ready'?'Không có di tích phù hợp.':'Chưa tải được dữ liệu Staff API.'}</div>`}</section>
 
