@@ -1203,24 +1203,47 @@ function renderAudio() {
 function renderChat(){return `${header('Bạn hỏi, di sản trả lời.','Hỏi đáp bằng Gemini dựa trên tài liệu Knowledge đã được phê duyệt.')}${visitorChatLanguageNotice()}<div class="chat-layout"><aside class="glass chat-sidebar"><h2>Bắt đầu một câu chuyện</h2>${['Đại Nội Huế có gì đặc biệt?','Lăng Tự Đức có lịch sử như thế nào?','Đàn Nam Giao có ý nghĩa gì?','Hãy giới thiệu Cung An Định'].map(v=>`<button class="chat-topic" data-question="${esc(v)}">${esc(v)}</button>`).join('')}<button class="text-button" id="clear-chat">${icon('trash')} Hội thoại mới</button><div class="notice">Chatbot kết nối Gemini/RAG thật. Khi chưa có tài liệu Knowledge được phê duyệt cho 10 di tích mới, chatbot sẽ báo không đủ thông tin. Nguồn chỉ xuất hiện khi có câu trả lời được hỗ trợ.</div></aside><article class="glass chat-panel"><div class="chat-header"><div class="avatar">${icon('compass')}</div><div><strong>Trợ lý di sản Huế</strong><small>Gemini / Knowledge đã phê duyệt · Trích dẫn nguồn khi có</small></div></div><div class="messages" id="messages" aria-live="polite">${chatMessages()}</div><form class="chat-form" id="chat-form"><input id="chat-input" placeholder="Bạn muốn tìm hiểu điều gì về Huế?" aria-label="Câu hỏi về di sản" maxlength="1000" required autocomplete="off" ${state.chatBusy?'disabled':''}><button class="icon-button dark" aria-label="Gửi câu hỏi" ${state.chatBusy?'disabled':''}>${icon('send')}</button></form></article></div>`}
 function chatMessages(){if(!state.chat.length&&!state.chatBusy)return `<div class="chat-welcome"><div class="audio-art">${icon('book')}</div><h2>Mỗi câu hỏi mở ra<br>một câu chuyện.</h2><p>Hãy hỏi về di tích tại Huế. Trợ lý chỉ trả lời khi có tài liệu được phê duyệt hỗ trợ.</p></div>`;return state.chat.map(m=>`<div class="message ${m.role==='user'?'user':''}">${esc(m.text)}${m.source?`<span class="source">${icon('book')} ${esc(m.source)}</span>`:''}</div>`).join('')+(state.chatBusy?'<div class="message" role="status">Đang tra cứu tài liệu và hỏi Gemini…</div>':'')}
 
+
 function renderAdminContent(){
-  if(IS_ADMIN && window.HueAdminCRUD) return window.HueAdminCRUD.renderContent({state,places,attractionApi,esc,norm,icon});
-  const filters=[['Tất cả','Tất cả'],['published','Đã xuất bản'],['draft','Bản nháp'],['in_review','Chờ duyệt'],['archived','Đã lưu trữ']];
+  if(IS_ADMIN && window.HueAdminCRUD)
+    return window.HueAdminCRUD.renderContent({state,places,attractionApi,esc,norm,icon});
+
+  const filters=[
+    ['Tất cả','Tất cả'],
+    ['published','Đã xuất bản'],
+    ['draft','Bản nháp'],
+    ['in_review','Chờ duyệt'],
+    ['archived','Đã lưu trữ']
+  ];
+
   const names=new Map(places.map(p=>[p.id,p]));
+
   const rows=attractionApi.staffRows.filter(row=>
     (state.adminFilter==='Tất cả'||row.status===state.adminFilter) &&
-    norm((names.get(row.slug)?.name || row.slug)+' '+row.slug).includes(norm(state.adminSearch))
+    norm((names.get(row.slug)?.name || row.slug)+' '+row.slug)
+      .includes(norm(state.adminSearch))
   );
+
   const notice=attractionApi.staffStatus==='ready'
     ? `Đang hiển thị ${attractionApi.staffRows.length} bản ghi từ Staff API và PostgreSQL. Biên tập nội dung thật sẽ tích hợp sau.`
-    : attractionApi.staffStatus==='loading'?'Đang đọc Staff API từ PostgreSQL…':attractionApi.message;
+    : attractionApi.staffStatus==='loading'
+      ? 'Đang đọc Staff API từ PostgreSQL…'
+      : attractionApi.message;
+
   return `<div class="filters">${filters.map(([key,label])=>`<button class="filter ${state.adminFilter===key?'active':''}" data-admin-filter="${key}">${label}</button>`).join('')}<button class="button outline small" id="refresh-admin-attractions">Làm mới</button></div>
-  <section class="glass table-wrap"><table><thead><tr><th>DI TÍCH</th><th>SLUG</th><th>TRẠNG THÁI</th><th>CHI TIẾT</th></tr></thead>
-  <tbody>${rows.map(row=>{
-    const p=names.get(row.slug);const latitude=Number(row.latitude),longitude=Number(row.longitude);
-   return `<tr><td>${esc(p?.name || row.slug)}</td><td>${esc(row.slug)}</td><td><span class="status">${esc(filters.find(([key])=>key===row.status)?.[1]||row.status)}</span></td><td>${p?`<button class="text-button" data-detail="${esc(p.id)}">Xem chi tiết ${icon('arrow')}</button>`:'—'}</td></tr>`;
+  <section class="glass table-wrap">
+    <table>
+      <thead><tr><th>DI TÍCH</th><th>SLUG</th><th>TRẠNG THÁI</th><th>CHI TIẾT</th></tr></thead>
+      <tbody>${rows.map(row=>{
+        const p=names.get(row.slug);
+        return `<tr><td>${esc(p?.name || row.slug)}</td><td>${esc(row.slug)}</td><td><span class="status">${esc(filters.find(([key])=>key===row.status)?.[1]||row.status)}</span></td><td>${p?`<button class="text-button" data-detail="${esc(p.id)}">Xem chi tiết ${icon('arrow')}</button>`:'—'}</td></tr>`;
+      }).join('')}</tbody>
+    </table>
+    ${rows.length?'':`<div class="empty">${attractionApi.staffStatus==='ready'?'Không có di tích phù hợp bộ lọc.':'Chưa tải được danh sách Staff API.'}</div>`}
+  </section>
   <div class="notice" role="status">${esc(notice)}</div>`;
 }
+
 // M2.1: Staff routes are loaded from the authenticated backend; never from sample routes.
 const staffRouteApi = { status: 'idle', items: [], error: '', requestId: 0 };
 const staffRouteStatuses = {
