@@ -1215,11 +1215,10 @@ function renderAdminContent(){
     ? `Đang hiển thị ${attractionApi.staffRows.length} bản ghi từ Staff API và PostgreSQL. Biên tập nội dung thật sẽ tích hợp sau.`
     : attractionApi.staffStatus==='loading'?'Đang đọc Staff API từ PostgreSQL…':attractionApi.message;
   return `<div class="filters">${filters.map(([key,label])=>`<button class="filter ${state.adminFilter===key?'active':''}" data-admin-filter="${key}">${label}</button>`).join('')}<button class="button outline small" id="refresh-admin-attractions">Làm mới</button></div>
-  <section class="glass table-wrap"><table><thead><tr><th>DI TÍCH</th><th>SLUG</th><th>TRẠNG THÁI</th><th>GPS THAM KHẢO</th><th>CHI TIẾT</th></tr></thead>
+  <section class="glass table-wrap"><table><thead><tr><th>DI TÍCH</th><th>SLUG</th><th>TRẠNG THÁI</th><th>CHI TIẾT</th></tr></thead>
   <tbody>${rows.map(row=>{
     const p=names.get(row.slug);const latitude=Number(row.latitude),longitude=Number(row.longitude);
-    return `<tr><td>${esc(p?.name || row.slug)}</td><td>${esc(row.slug)}</td><td><span class="status">${esc(filters.find(([key])=>key===row.status)?.[1]||row.status)}</span></td><td>${Number.isFinite(latitude)&&Number.isFinite(longitude)?latitude.toFixed(5)+', '+longitude.toFixed(5):'—'}</td><td>${p?`<button class="text-button" data-detail="${esc(p.id)}">Xem chi tiết ${icon('arrow')}</button>`:'—'}</td></tr>`;
-  }).join('')}</tbody></table>${rows.length?'':`<div class="empty">${attractionApi.staffStatus==='ready'?'Không có di tích phù hợp bộ lọc.':'Chưa tải được danh sách Staff API.'}</div>`}</section>
+   return `<tr><td>${esc(p?.name || row.slug)}</td><td>${esc(row.slug)}</td><td><span class="status">${esc(filters.find(([key])=>key===row.status)?.[1]||row.status)}</span></td><td>${p?`<button class="text-button" data-detail="${esc(p.id)}">Xem chi tiết ${icon('arrow')}</button>`:'—'}</td></tr>`;
   <div class="notice" role="status">${esc(notice)}</div>`;
 }
 // M2.1: Staff routes are loaded from the authenticated backend; never from sample routes.
